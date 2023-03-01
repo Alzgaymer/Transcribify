@@ -1,0 +1,20 @@
+run:
+  issues:
+    # enable some common linters
+    golint: true
+    gofmt: true
+    gosec: true
+    unconvert: true
+    unused: true
+    ineffassign: false
+
+    # enable all the other linters
+    enable-all: true
+
+  # set the minimum severity level for issues
+  severity: "warning"
+
+  # exclude some directories from linting
+  exclude:
+    - vendor/
+    - tmp/
