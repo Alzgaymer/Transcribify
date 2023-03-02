@@ -16,12 +16,13 @@ import (
 
 func main() {
 	var configuration config.AppConfiguration
-	err := cleanenv.ReadConfig("route.env", configuration)
+	err := cleanenv.ReadConfig("route.env", &configuration)
 	if err != nil {
 		panic(err)
 	}
 
 	server := http.Server{Addr: ":" + configuration.Port, Handler: service()}
+
 	log, err := logger.New(
 		logger.WithDevelopment(true),
 		logger.WithEncoding("console"),
@@ -56,11 +57,12 @@ func main() {
 		}
 
 	}()
-
+	log.Info("Server is running", zap.String("port", configuration.Port))
 	err = server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatal("Failed to serve", zap.Error(err))
 	}
+
 	<-ctx.Done()
 }
 
@@ -69,7 +71,7 @@ func service() http.Handler {
 	router := chi.NewRouter()
 
 	router.Get("/api/v1/hello", func(writer http.ResponseWriter, request *http.Request) {
-		writer.Write([]byte("Hello"))
+		writer.Write([]byte("<h1>Hello</h1>"))
 	})
 
 	return router
