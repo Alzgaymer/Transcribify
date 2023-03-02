@@ -42,8 +42,8 @@ func main() {
 		defer cancel()
 		<-sig
 
-		timeout, _ := context.WithTimeout(ctx, 30*time.Second)
-
+		timeout, timeoutcancel := context.WithTimeout(ctx, 30*time.Second)
+		defer timeoutcancel()
 		go func() {
 			// Waiting until context is done then panic
 			<-timeout.Done()
@@ -58,7 +58,6 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to shutdown server", zap.Error(err))
 		}
-
 	}()
 
 	log.Info("Server is running", zap.String("port", configuration.Port))
@@ -81,7 +80,10 @@ func service() http.Handler {
 	router := chi.NewRouter()
 
 	router.Get("/api/v1/hello", func(writer http.ResponseWriter, request *http.Request) {
-		writer.Write([]byte("<h1>Hello</h1>"))
+		_, err := writer.Write([]byte("<h1>Hello</h1>"))
+		if err != nil {
+			log.Error("Failed to write", zap.Error(err))
+		}
 	})
 
 	videoIDPattern := "[a-zA-Z0-9_-]{11}"
@@ -100,7 +102,10 @@ func service() http.Handler {
 
 		// Return a response to the client
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Video ID: " + videoID))
+		_, err := w.Write([]byte("Video ID: " + videoID))
+		if err != nil {
+			log.Error("Failed to write", zap.Error(err))
+		}
 	})
 	return router
 }
