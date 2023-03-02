@@ -10,7 +10,7 @@ type configModifierFunc func(*zap.Config)
 func New(configModifiers ...configModifierFunc) (*zap.Logger, error) {
 
 	cfg := zap.Config{
-		Encoding:         "json",
+		Encoding:         "console",
 		OutputPaths:      []string{"stderr"},
 		ErrorOutputPaths: []string{"stderr"},
 		Level:            zap.NewAtomicLevelAt(zap.InfoLevel),
@@ -36,7 +36,7 @@ func WithLevel(level zap.AtomicLevel) configModifierFunc {
 	}
 }
 
-// WithEncoding "json" as default
+// WithEncoding "console" as default
 func WithEncoding(encoding string) configModifierFunc {
 	return func(config *zap.Config) {
 		config.Encoding = encoding
