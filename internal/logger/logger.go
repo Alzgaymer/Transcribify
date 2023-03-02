@@ -9,7 +9,6 @@ type configModifierFunc func(*zap.Config)
 
 func New(configModifiers ...configModifierFunc) (*zap.Logger, error) {
 
-	logger, err := zap.NewDevelopment()
 	cfg := zap.Config{
 		Encoding:         "json",
 		OutputPaths:      []string{"stderr"},
@@ -22,7 +21,7 @@ func New(configModifiers ...configModifierFunc) (*zap.Logger, error) {
 		c(&cfg)
 	}
 
-	logger, err = cfg.Build()
+	logger, err := cfg.Build()
 	if err != nil {
 		return nil, err
 	}
