@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+	"io"
 	"net/http"
 	"yt-video-transcriptor/config"
 	"yt-video-transcriptor/models"
@@ -17,7 +18,6 @@ func GetVideoTranscription(w http.ResponseWriter, r *http.Request) {
 
 	log, err := logger.New(
 		logger.WithDevelopment(true),
-		logger.WithLevel(zap.NewAtomicLevelAt(zap.DebugLevel)),
 	)
 
 	if err != nil {
@@ -47,29 +47,44 @@ func GetVideoTranscription(w http.ResponseWriter, r *http.Request) {
 	req.Header.Add("X-RapidAPI-Key", configuration.Key)
 	req.Header.Add("X-RapidAPI-Host", configuration.API)
 
+	log.Info("Getting response...")
 	res, err := http.DefaultClient.Do(req)
-
 	if err != nil {
 		log.Error("Failed to get transcription", zap.Error(err))
 	}
 	defer res.Body.Close()
 
-	log.Info("Getting response...")
-
-	// Use the decoder to parse the response
-	var data []models.YTVideo
-	err = json.NewDecoder(res.Body).Decode(&data)
+	//Reading response.Body into []model.YTVideo
+	video, err := responseToYTVideo(res)
 	if err != nil {
 		log.Error("Failed to unmarshal data", zap.Error(err))
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "    ")
-	err = encoder.Encode(data)
+	err = writeVideoJson(w, video)
 	if err != nil {
 		log.Error("Failed to encode data", zap.Error(err))
+		w.WriteHeader(http.StatusNotFound)
 	}
+	w.WriteHeader(http.StatusOK)
+
+}
+
+func responseToYTVideo(res *http.Response) ([]models.YTVideo, error) {
+
+	var data []models.YTVideo
+	err := json.NewDecoder(res.Body).Decode(&data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func writeVideoJson(w io.Writer, video []models.YTVideo) error {
+
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "    ")
+
+	return encoder.Encode(video)
 }
