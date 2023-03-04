@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
@@ -14,6 +12,7 @@ import (
 	"time"
 	"yt-video-transcriptor/internal/config"
 	"yt-video-transcriptor/internal/logger"
+	"yt-video-transcriptor/pkg/routes"
 )
 
 func main() {
@@ -84,58 +83,7 @@ func service() http.Handler {
 	// Create a route for the GET method that accepts the video ID as a parameter
 	router.Route("/api/v1", func(r chi.Router) {
 		r.Route("/{videoID:[a-zA-Z0-9_-]{11}}", func(r chi.Router) {
-			r.Get("/{language:[a-zA-Z]{2}}", func(w http.ResponseWriter, r *http.Request) {
-				// Handle GET request for video with specified language
-				// Get the video ID from the URL parameters
-				videoID := chi.URLParam(r, "videoID")
-				language := chi.URLParam(r, "language")
-
-				// Do something with the video ID, for example print it to the console
-				log.Info("Input parameter",
-					zap.String("Video ID", videoID),
-					zap.String("Language", language),
-					zap.String("URL", r.URL.Path),
-				)
-
-				var configuration config.APIConfiguration
-				err := cleanenv.ReadConfig("api.env", &configuration)
-				if err != nil {
-					log.Error("Failed to read api.env", zap.Error(err))
-				}
-
-				// Return a response to the client
-				_, err = w.Write([]byte("Video ID: " + videoID + "\n"))
-				if err != nil {
-					log.Error("Failed to write", zap.Error(err))
-				}
-
-				url := fmt.Sprintf("https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=%s&lang=%s", videoID, language)
-
-				req, _ := http.NewRequest(http.MethodGet, url, nil)
-
-				req.Header.Add("X-RapidAPI-Key", configuration.Key)
-				req.Header.Add("X-RapidAPI-Host", configuration.API)
-
-				res, _ := http.DefaultClient.Do(req)
-
-				defer res.Body.Close()
-
-				log.Info("Getting response...")
-
-				// Use the decoder to parse the response
-				var data []config.YTVideo
-				err = json.NewDecoder(res.Body).Decode(&data)
-				if err != nil {
-					log.Error("Failed to unmarshal data", zap.Error(err))
-					w.WriteHeader(http.StatusConflict)
-					return
-				}
-
-				w.WriteHeader(http.StatusOK)
-				encoder := json.NewEncoder(w)
-				encoder.SetIndent("", "    ")
-				encoder.Encode(data)
-			})
+			r.Get("/{language:[a-zA-Z]{2}}", routes.GetVideoTranscription)
 		})
 	})
 
