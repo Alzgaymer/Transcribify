@@ -3,25 +3,21 @@ package main
 import (
 	"context"
 	"github.com/go-chi/chi/v5"
-	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-	"yt-video-transcriptor/internal/config"
-	"yt-video-transcriptor/internal/logger"
-	"yt-video-transcriptor/pkg/routes"
+	"yt-video-transcriptor/config"
+	"yt-video-transcriptor/logger"
+	"yt-video-transcriptor/routes"
 )
 
 func main() {
 	// Setting up server configuration (port etc.)
-	var configuration config.AppConfiguration
-	err := cleanenv.ReadConfig("route.env", &configuration)
-	if err != nil {
-		panic(err)
-	}
+	configuration := config.GetRoute()
 
 	server := http.Server{Addr: ":" + configuration.Port, Handler: service()}
 
@@ -73,12 +69,9 @@ func main() {
 
 func service() http.Handler {
 
-	log, err := logger.New()
-	if err != nil {
-		return nil
-	}
-
 	router := chi.NewRouter()
+
+	router.Use(middleware.Logger)
 
 	// Create a route for the GET method that accepts the video ID as a parameter
 	router.Route("/api/v1", func(r chi.Router) {

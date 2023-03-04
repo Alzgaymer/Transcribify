@@ -1,13 +1,4 @@
-package config
-
-type AppConfiguration struct {
-	Port string `env:"APP_PORT"`
-}
-
-type APIConfiguration struct {
-	Key string `env:"API_KEY"`
-	API string `env:"API_URL"`
-}
+package models
 
 type YTVideo struct {
 	Title           string          `json:"title"`

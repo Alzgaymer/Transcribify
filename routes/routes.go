@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
 	"net/http"
-	"yt-video-transcriptor/internal/config"
-	"yt-video-transcriptor/internal/logger"
+	"yt-video-transcriptor/config"
+	"yt-video-transcriptor/models"
+
+	"yt-video-transcriptor/logger"
 )
 
 // GetVideoTranscription Handle GET request for video with specified language
@@ -33,11 +34,7 @@ func GetVideoTranscription(w http.ResponseWriter, r *http.Request) {
 		zap.String("URL", r.URL.Path),
 	)
 
-	var configuration config.APIConfiguration
-	err = cleanenv.ReadConfig("api.env", &configuration)
-	if err != nil {
-		log.Error("Failed to read api.env", zap.Error(err))
-	}
+	configuration := config.GetAPI()
 
 	url := fmt.Sprintf(
 		"https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=%s&lang=%s",
@@ -60,11 +57,11 @@ func GetVideoTranscription(w http.ResponseWriter, r *http.Request) {
 	log.Info("Getting response...")
 
 	// Use the decoder to parse the response
-	var data []config.YTVideo
+	var data []models.YTVideo
 	err = json.NewDecoder(res.Body).Decode(&data)
 	if err != nil {
 		log.Error("Failed to unmarshal data", zap.Error(err))
-		w.WriteHeader(http.StatusConflict)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
