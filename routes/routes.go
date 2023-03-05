@@ -47,7 +47,6 @@ func GetVideoTranscription(w http.ResponseWriter, r *http.Request) {
 	req.Header.Add("X-RapidAPI-Key", configuration.Key)
 	req.Header.Add("X-RapidAPI-Host", configuration.API)
 
-	log.Info("Getting response...")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Error("Failed to get transcription", zap.Error(err))
@@ -56,7 +55,7 @@ func GetVideoTranscription(w http.ResponseWriter, r *http.Request) {
 
 	//Reading response.Body into []model.YTVideo
 	video, err := responseToYTVideo(res)
-	if err != nil {
+	if err != nil || len(video) == 0 {
 		log.Error("Failed to unmarshal data", zap.Error(err))
 		w.WriteHeader(http.StatusNoContent)
 		return
