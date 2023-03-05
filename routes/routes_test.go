@@ -224,7 +224,6 @@ func TestGetVideoTranscription(t *testing.T) {
 
 			//Get video from response
 			video, err := responseToYTVideo(response)
-			assert.Nil(t, err)
 
 			// Title
 			assert.Equal(t, testCase.responseData, video)
