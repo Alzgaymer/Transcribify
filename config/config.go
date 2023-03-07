@@ -1,81 +1,36 @@
 package config
 
 import (
-	"fmt"
-	"github.com/ilyakaznacheev/cleanenv"
+	_ "github.com/joho/godotenv/autoload"
 	"os"
-	"strings"
 )
-
-var (
-	routeConfig = RouteConfiguration{
-		filename: "route.env",
-	}
-	apiConfig = APIConfiguration{
-		filename: "api.env",
-	}
-	dbConfig = DBConfiguration{
-		filename: "db.env",
-	}
-)
-
-func getProjectPath(inputPath string) (string, error) {
-	index := strings.Index(inputPath, "yt-video-transcriptor")
-	if index == -1 {
-		return "", fmt.Errorf("project path not found in input path")
-	}
-	return inputPath[:index+len("yt-video-transcriptor")] + "\\", nil
-}
-
-func init() {
-	wd, err := os.Getwd()
-	checkErr(err)
-	wd, err = getProjectPath(wd)
-	checkErr(err)
-	//route configuration
-	err = cleanenv.ReadConfig(wd+routeConfig.filename, &routeConfig)
-	checkErr(err)
-
-	//api configuration
-	err = cleanenv.ReadConfig(wd+apiConfig.filename, &apiConfig)
-	checkErr(err)
-
-	//db configuration
-	err = cleanenv.ReadConfig(wd+dbConfig.filename, &dbConfig)
-	checkErr(err)
-}
 
 func GetRoute() RouteConfiguration {
-	return routeConfig
+	return RouteConfiguration{
+		Port: os.Getenv("APP_PORT"),
+	}
 }
-
 func GetAPI() APIConfiguration {
-	return apiConfig
+	return APIConfiguration{
+		Key: os.Getenv("API_KEY"),
+		API: os.Getenv("API_URL"),
+	}
 }
 
 func GetDB() DBConfiguration {
-	return dbConfig
-}
-
-func checkErr(err error) {
-	if err != nil {
-		panic(err)
-	}
+	return DBConfiguration{}
 }
 
 type RouteConfiguration struct {
-	filename string
-	Port     string `env:"APP_PORT"`
+	Port string `env:"APP_PORT"`
 }
 
 type APIConfiguration struct {
-	filename string
-	Key      string `env:"API_KEY"`
-	API      string `env:"API_URL"`
+	Key string `env:"API_KEY"`
+	API string `env:"API_URL"`
 }
 
 type DBConfiguration struct {
-	filename string
 	Password string
 	Host     string
 	Port     string
