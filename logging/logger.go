@@ -5,9 +5,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type configModifierFunc func(*zap.Config)
+type optionsFunc func(*zap.Config)
 
-func New(configModifiers ...configModifierFunc) (*zap.Logger, error) {
+func New(configModifiers ...optionsFunc) (*zap.Logger, error) {
 
 	cfg := zap.Config{
 		Encoding:         "console",
@@ -30,35 +30,35 @@ func New(configModifiers ...configModifierFunc) (*zap.Logger, error) {
 }
 
 // WithLevel zap.InfoLevel as default
-func WithLevel(level zap.AtomicLevel) configModifierFunc {
+func WithLevel(level zap.AtomicLevel) optionsFunc {
 	return func(config *zap.Config) {
 		config.Level = level
 	}
 }
 
 // WithEncoding "console" as default
-func WithEncoding(encoding string) configModifierFunc {
+func WithEncoding(encoding string) optionsFunc {
 	return func(config *zap.Config) {
 		config.Encoding = encoding
 	}
 }
 
 // WithDevelopment false as default
-func WithDevelopment(dev bool) configModifierFunc {
+func WithDevelopment(dev bool) optionsFunc {
 	return func(config *zap.Config) {
 		config.Development = dev
 	}
 }
 
 // WithOutputPaths "stderr" as default
-func WithOutputPaths(paths []string) configModifierFunc {
+func WithOutputPaths(paths []string) optionsFunc {
 	return func(config *zap.Config) {
 		config.OutputPaths = paths
 	}
 }
 
 // WithEncoderConfig as default NewDevelopment
-func WithEncoderConfig(encoder zapcore.EncoderConfig) configModifierFunc {
+func WithEncoderConfig(encoder zapcore.EncoderConfig) optionsFunc {
 	return func(config *zap.Config) {
 		config.EncoderConfig = encoder
 	}
