@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
+	"yt-video-transcriptor/logging"
 	"yt-video-transcriptor/models"
 )
 
@@ -16,13 +18,17 @@ func TestGetVideoTranscription(t *testing.T) {
 
 	// Create a new router instance
 	r := chi.NewRouter()
-
-	// Mount the GetVideoTranscription handler under the /api/v1 route
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Route("/{videoID:[a-zA-Z0-9_-]{11}}", func(r chi.Router) {
-			r.Get("/{language:[a-zA-Z]{2}}", GetVideoTranscription)
-		})
+	logger, err := logging.New(
+		logging.WithDevelopment(true),
+	)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	route := NewRoute(logger, &http.Client{
+		Timeout: 30 * time.Second,
 	})
+	// Mount the GetVideoTranscription handler under the /api/v1 route
+	r.Get("/api/v1/videos", route.GetVideoTranscription)
 
 	// Define test cases in a table format
 	testCases := []struct {
@@ -34,7 +40,7 @@ func TestGetVideoTranscription(t *testing.T) {
 	}{
 		{
 			name:           "Success",
-			url:            "/api/v1/dQw4w9WgXcQ/en",
+			url:            "/api/v1/videos?v=dQw4w9WgXcQ&lang=en",
 			responseStatus: http.StatusOK,
 			responseData: []models.YTVideo{
 				{
@@ -223,7 +229,7 @@ func TestGetVideoTranscription(t *testing.T) {
 			assert.Equal(t, testCase.responseStatus, status)
 
 			//Get video from response
-			video, _ := responseToYTVideo(response)
+			video, _ := route.responseToYTVideo(response)
 
 			// Title
 			assert.Equal(t, testCase.responseData, video)
