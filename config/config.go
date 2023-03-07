@@ -1,7 +1,6 @@
 package config
 
 import (
-	_ "github.com/joho/godotenv/autoload"
 	"os"
 )
 
@@ -31,7 +30,9 @@ type APIConfiguration struct {
 }
 
 type DBConfiguration struct {
-	Password string
-	Host     string
-	Port     string
+	Username string `env:"DB_USERNAME"`
+	Password string `env:"DB_PASSWORD"`
+	Host     string `env:"DB_HOST"`
+	Port     string `env:"DB_PORT"`
+	Database string `env:"DB_DATABASE"`
 }
