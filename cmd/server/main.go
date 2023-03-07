@@ -32,7 +32,7 @@ func main() {
 		}
 		ctx, cancel = context.WithCancel(context.Background())
 		logger      = withLogger()
-		postgres    = withDatabase(ctx, 5, 1*time.Millisecond)
+		postgres    = withDatabase(ctx, 5, 1*time.Second)
 	)
 
 	server := http.Server{Addr: ":" + configuration.Port, Handler: service(
@@ -85,7 +85,7 @@ func service(logger *zap.Logger, client *http.Client, repository database.Reposi
 
 	route := routes.NewRoute(logger, client, repository)
 	// Create a route for the GET method that accepts the video ID as a parameter
-	router.Get("api/v1/videos", route.GetVideoTranscription)
+	router.Get("/api/v1/videos", route.GetVideoTranscription)
 
 	return router
 }

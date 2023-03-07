@@ -17,7 +17,13 @@ func GetAPI() APIConfiguration {
 }
 
 func GetDB() DBConfiguration {
-	return DBConfiguration{}
+	return DBConfiguration{
+		Username: os.Getenv("DB_USERNAME"),
+		Password: os.Getenv("DB_PASSWORD"),
+		Host:     os.Getenv("DB_HOST"),
+		Port:     os.Getenv("DB_PORT"),
+		Database: os.Getenv("DB_DATABASE"),
+	}
 }
 
 type RouteConfiguration struct {

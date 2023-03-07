@@ -17,4 +17,6 @@
 # vendor/
 
 # Ignored idea files
-.idea/
+.idea
+
+*.vs

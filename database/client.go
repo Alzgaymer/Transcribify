@@ -31,8 +31,7 @@ func NewClient(ctx context.Context, attemptsToConnect uint, sleep time.Duration)
 }
 
 func getDSN(configuration config.DBConfiguration) string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s",
+	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s",
 		configuration.Username,
 		configuration.Password,
 		configuration.Host,
