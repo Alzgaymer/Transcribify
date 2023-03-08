@@ -85,7 +85,9 @@ func service(logger *zap.Logger, client *http.Client, repository database.Reposi
 
 	route := routes.NewRoute(logger, client, repository)
 	// Create a route for the GET method that accepts the video ID as a parameter
-	router.Get("/api/v1/videos", route.GetVideoTranscription)
+	router.Route("/api/v1", func(r chi.Router) {
+		r.Get("/video", route.GetVideoTranscription) //GET	/api/v1/video?v=&lang=
+	})
 
 	return router
 }
