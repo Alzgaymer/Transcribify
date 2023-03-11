@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"log"
@@ -81,7 +80,7 @@ func service(logger *zap.Logger, client *http.Client, repository database.Reposi
 
 	router := chi.NewRouter()
 
-	router.Use(middleware.Logger)
+	//router.Use(logging.Logging(logger))
 
 	route := routes.NewRoute(logger, client, repository)
 	// Create a route for the GET method that accepts the video ID as a parameter
