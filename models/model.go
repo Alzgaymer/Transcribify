@@ -20,6 +20,7 @@ type Thumbnails struct {
 	Height int    `json:"height"`
 }
 
+// Transcription implements json.Unmarshaler
 type Transcription struct {
 	Subtitle string  `json:"subtitle"`
 	Start    float64 `json:"start"`
