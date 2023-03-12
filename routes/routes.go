@@ -23,29 +23,21 @@ func NewRoute(logger *zap.Logger, client *http.Client, repository database.Repos
 }
 
 type VideoRequest struct {
-	videoID, language string
+	VideoID  string `json:"v"`
+	Language string `json:"lang"`
 }
 
 // GetVideoTranscription Handle GET request for video with specified language
 func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request) {
 
-	// Get the video ID and language from the URL parameters
-
-	videoID := r.URL.Query().Get("v")
-	language := r.URL.Query().Get("lang")
-
-	route.logger.Info("Input parameter",
-		zap.String("Video ID", videoID),
-		zap.String("Language", language),
-		zap.String("URL", r.URL.Path),
-	)
+	// Get the video ID and language from the query
 	videoRequest := VideoRequest{
-		videoID:  videoID,
-		language: language,
+		VideoID:  r.URL.Query().Get("v"),
+		Language: r.URL.Query().Get("lang"),
 	}
 
 	//Validating request
-	if isNotValidVideoRequest(videoRequest) {
+	if notValid, err := isNotValidVideoRequest(videoRequest); notValid || err != nil {
 		w.WriteHeader(http.StatusLengthRequired)
 		return
 	}
@@ -60,13 +52,13 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	defer res.Body.Close()
 
 	//Reading response.Body into []model.YTVideo
-	video, err := responseToYTVideo(res)
+	video, err := responseToYTVideo(res.Body)
 	if err != nil {
 		route.logger.Error("Failed to unmarshal data", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
+	//Writes to html page
 	err = writeVideoJson(w, video)
 	if err != nil {
 		route.logger.Error("Failed to encode data", zap.Error(err))
@@ -82,8 +74,8 @@ func (route *Route) callbackToApi(request VideoRequest) (*http.Response, error) 
 
 	url := fmt.Sprintf(
 		"https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=%s&lang=%s",
-		request.videoID,
-		request.language,
+		request.VideoID,
+		request.Language,
 	)
 
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
@@ -94,10 +86,10 @@ func (route *Route) callbackToApi(request VideoRequest) (*http.Response, error) 
 	return route.client.Do(req)
 }
 
-func responseToYTVideo(res *http.Response) ([]models.YTVideo, error) {
+func responseToYTVideo(res io.Reader) ([]models.YTVideo, error) {
 
 	var data []models.YTVideo
-	err := json.NewDecoder(res.Body).Decode(&data)
+	err := json.NewDecoder(res).Decode(&data)
 	if err != nil {
 		return nil, err
 	}
@@ -113,14 +105,15 @@ func writeVideoJson(w io.Writer, video []models.YTVideo) error {
 	return encoder.Encode(video)
 }
 
-func isValidVideoRequest(request VideoRequest) bool {
-	matchedVideo, _ := regexp.MatchString("^[a-zA-Z0-9_-]{11}$", request.videoID)
+func isValidVideoRequest(request VideoRequest) (bool, error) {
+	matchedVideo, err := regexp.MatchString("^[a-zA-Z0-9_-]{11}$", request.VideoID)
 
-	matchedLang, _ := regexp.MatchString("^[a-zA-Z]{2}$", request.language)
+	matchedLang, err := regexp.MatchString("^[a-zA-Z]{2}$", request.Language)
 
-	return matchedVideo && matchedLang
+	return matchedVideo && matchedLang, err
 }
 
-func isNotValidVideoRequest(request VideoRequest) bool {
-	return !isValidVideoRequest(request)
+func isNotValidVideoRequest(request VideoRequest) (bool, error) {
+	videoRequest, err := isValidVideoRequest(request)
+	return !videoRequest, err
 }

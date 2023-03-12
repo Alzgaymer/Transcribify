@@ -1,5 +1,5 @@
 # Use a multi-stage build to compile the application with Golang Alpine
-FROM golang:latest as build
+FROM golang as build
 
 WORKDIR /go/src/app
 
@@ -7,10 +7,10 @@ WORKDIR /go/src/app
 COPY . .
 
 # Install mod dependencies
-RUN go install ./...
+RUN go mod download
 
 # Build the Go app
-RUN go build -o main ./cmd/server/main.go
+RUN go build -o main ./main.go
 
 # Build a new image from scratch with only the binary
 #FROM alpine:latest

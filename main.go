@@ -29,9 +29,9 @@ func main() {
 		client        = &http.Client{
 			Timeout: 30 * time.Second,
 		}
-		ctx, cancel = context.WithCancel(context.Background())
-		logger      = withLogger()
-		postgres    = withDatabase(ctx, 5, 1*time.Second)
+		ctx, cancel                     = context.WithCancel(context.Background())
+		logger                          = withLogger()
+		postgres    database.Repository = nil //withDatabase(ctx, 5, 1*time.Second)
 	)
 
 	server := http.Server{Addr: ":" + configuration.Port, Handler: service(
