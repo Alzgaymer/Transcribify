@@ -8,8 +8,10 @@ import (
 	"yt-video-transcriptor/config"
 )
 
-func NewClient(ctx context.Context, attemptsToConnect uint, sleep time.Duration) (client Client, err error) {
-	configuration := config.GetDB()
+type connectionFunc func() error
+
+func NewClient(ctx context.Context, attemptsToConnect uint, sleep time.Duration) (client *pgx.Conn, err error) {
+	configuration := config.DB()
 	dsn := getDSN(configuration)
 
 	err = doWithAttempts(attemptsToConnect, sleep, func() error {
@@ -30,6 +32,7 @@ func NewClient(ctx context.Context, attemptsToConnect uint, sleep time.Duration)
 	return client, nil
 }
 
+// Uses fmt.Sprintf no need to test
 func getDSN(configuration config.DBConfiguration) string {
 	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s",
 		configuration.Username,
@@ -39,8 +42,6 @@ func getDSN(configuration config.DBConfiguration) string {
 		configuration.Database,
 	)
 }
-
-type connectionFunc func() error
 
 func doWithAttempts(attempts uint, sleep time.Duration, f connectionFunc) error {
 	for i := 0; i < int(attempts); i++ {
