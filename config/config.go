@@ -4,19 +4,19 @@ import (
 	"os"
 )
 
-func GetRoute() RouteConfiguration {
+func Route() RouteConfiguration {
 	return RouteConfiguration{
 		Port: os.Getenv("APP_PORT"),
 	}
 }
-func GetAPI() APIConfiguration {
+func API() APIConfiguration {
 	return APIConfiguration{
 		Key: os.Getenv("API_KEY"),
 		API: os.Getenv("API_URL"),
 	}
 }
 
-func GetDB() DBConfiguration {
+func DB() DBConfiguration {
 	return DBConfiguration{
 		Username: os.Getenv("DB_USERNAME"),
 		Password: os.Getenv("DB_PASSWORD"),
