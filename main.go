@@ -16,6 +16,7 @@ import (
 	"yt-video-transcriptor/database"
 	"yt-video-transcriptor/logging"
 	"yt-video-transcriptor/routes"
+	"yt-video-transcriptor/routes/middlewares"
 )
 
 func main() {
@@ -25,13 +26,13 @@ func main() {
 		log.Fatal(err)
 	}
 	var (
-		configuration = config.GetRoute()
+		configuration = config.Route()
 		client        = &http.Client{
 			Timeout: 30 * time.Second,
 		}
-		ctx, cancel                     = context.WithCancel(context.Background())
-		logger                          = withLogger()
-		postgres    database.Repository = nil //withDatabase(ctx, 5, 1*time.Second)
+		ctx, cancel = context.WithCancel(context.Background())
+		logger      = Logger()
+		postgres    = Database(ctx, 5, 1*time.Second)
 	)
 
 	server := http.Server{Addr: ":" + configuration.Port, Handler: service(
@@ -48,8 +49,8 @@ func main() {
 		defer cancel()
 		<-sig
 
-		timeout, timeoutcancel := context.WithTimeout(ctx, 30*time.Second)
-		defer timeoutcancel()
+		timeout, timeoutfn := context.WithTimeout(ctx, 30*time.Second)
+		defer timeoutfn()
 		go func() {
 			// Waiting until context is done then panic
 			<-timeout.Done()
@@ -80,9 +81,10 @@ func service(logger *zap.Logger, client *http.Client, repository database.Reposi
 
 	router := chi.NewRouter()
 
-	//router.Use(logging.Logging(logger))
+	router.Use(middlewares.Logging(logger))
 
 	route := routes.NewRoute(logger, client, repository)
+
 	// Create a route for the GET method that accepts the video ID as a parameter
 	router.Route("/api/v1", func(r chi.Router) {
 		r.Get("/video", route.GetVideoTranscription) //GET	/api/v1/video?v=&lang=
@@ -91,7 +93,7 @@ func service(logger *zap.Logger, client *http.Client, repository database.Reposi
 	return router
 }
 
-func withLogger() *zap.Logger {
+func Logger() *zap.Logger {
 	logger, err := logging.New(
 		logging.WithDevelopment(true),
 		logging.WithLevel(zap.NewAtomicLevelAt(zap.DebugLevel)),
@@ -101,10 +103,11 @@ func withLogger() *zap.Logger {
 	}
 	return logger
 }
-func withDatabase(ctx context.Context, attemptsToConnect uint, sleep time.Duration) database.Repository {
+func Database(ctx context.Context, attemptsToConnect uint, sleep time.Duration) database.Repository {
 	client, err := database.NewClient(ctx, attemptsToConnect, sleep)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return database.NewPostgres(client)
 }

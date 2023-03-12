@@ -2,24 +2,31 @@ package database
 
 import (
 	"context"
+	"github.com/jackc/pgx/v5"
 	"yt-video-transcriptor/models"
 )
 
 type Postgres struct {
-	client Client
+	client *pgx.Conn
 }
 
-func (p Postgres) Insert(ctx context.Context, video ...models.YTVideo) error {
+func NewPostgres(client *pgx.Conn) Repository {
+	return &Postgres{
+		client: client,
+	}
+}
+
+func (p Postgres) Create(ctx context.Context, video models.YTVideo) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (p Postgres) Read(ctx context.Context, video models.YTVideo) ([]byte, error) {
+func (p Postgres) Read(ctx context.Context, s string) (models.YTVideo, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (p Postgres) Update(ctx context.Context, video models.YTVideo) error {
+func (p Postgres) Update(ctx context.Context, s string, video models.YTVideo) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -27,10 +34,4 @@ func (p Postgres) Update(ctx context.Context, video models.YTVideo) error {
 func (p Postgres) Delete(ctx context.Context, video ...models.YTVideo) error {
 	//TODO implement me
 	panic("implement me")
-}
-
-func NewPostgres(client Client) Repository {
-	return &Postgres{
-		client: client,
-	}
 }
