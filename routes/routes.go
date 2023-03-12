@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go.uber.org/zap"
 	"io"
@@ -37,13 +38,15 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	}
 
 	//Validating request
-	if notValid, err := isNotValidVideoRequest(videoRequest); notValid || err != nil {
+	if Valid, err := isValidVideoRequest(videoRequest); !Valid || err != nil {
 		w.WriteHeader(http.StatusLengthRequired)
 		return
 	}
 
 	//Make request to API
-	res, err := route.callbackToApi(videoRequest)
+	res, err := route.requestToApi(
+		"https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=%s&lang=%s",
+		videoRequest)
 	if err != nil {
 		route.logger.Error("Failed to get transcription", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
@@ -59,21 +62,21 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 		return
 	}
 	//Writes to html page
+	w.WriteHeader(http.StatusOK)
 	err = writeVideoJson(w, video)
 	if err != nil {
 		route.logger.Error("Failed to encode data", zap.Error(err))
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
-func (route *Route) callbackToApi(request VideoRequest) (*http.Response, error) {
+func (route *Route) requestToApi(APIurl string, request VideoRequest) (*http.Response, error) {
 
-	configuration := config.GetAPI()
+	configuration := config.API()
 
 	url := fmt.Sprintf(
-		"https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=%s&lang=%s",
+		APIurl,
 		request.VideoID,
 		request.Language,
 	)
@@ -87,6 +90,9 @@ func (route *Route) callbackToApi(request VideoRequest) (*http.Response, error) 
 }
 
 func responseToYTVideo(res io.Reader) ([]models.YTVideo, error) {
+	if res == nil {
+		return nil, errors.New("io.Reader is nil")
+	}
 
 	var data []models.YTVideo
 	err := json.NewDecoder(res).Decode(&data)
@@ -111,9 +117,4 @@ func isValidVideoRequest(request VideoRequest) (bool, error) {
 	matchedLang, err := regexp.MatchString("^[a-zA-Z]{2}$", request.Language)
 
 	return matchedVideo && matchedLang, err
-}
-
-func isNotValidVideoRequest(request VideoRequest) (bool, error) {
-	videoRequest, err := isValidVideoRequest(request)
-	return !videoRequest, err
 }
