@@ -9,30 +9,25 @@ import (
 	"net/http"
 	"regexp"
 	"yt-video-transcriptor/config"
-	"yt-video-transcriptor/database"
 	"yt-video-transcriptor/models"
+	"yt-video-transcriptor/models/repository"
 )
 
 type Route struct {
 	logger     *zap.Logger
 	client     *http.Client
-	repository database.Repository
+	repository repository.Repository
 }
 
-func NewRoute(logger *zap.Logger, client *http.Client, repository database.Repository) *Route {
+func NewRoute(logger *zap.Logger, client *http.Client, repository repository.Repository) *Route {
 	return &Route{logger: logger, client: client, repository: repository}
-}
-
-type VideoRequest struct {
-	VideoID  string `json:"v"`
-	Language string `json:"lang"`
 }
 
 // GetVideoTranscription Handle GET request for video with specified language
 func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request) {
 
 	// Get the video ID and language from the query
-	videoRequest := VideoRequest{
+	videoRequest := models.VideoRequest{
 		VideoID:  r.URL.Query().Get("v"),
 		Language: r.URL.Query().Get("lang"),
 	}
@@ -42,6 +37,21 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusLengthRequired)
 		return
 	}
+
+	//Find in repository
+	read, err := route.repository.Read(r.Context(), videoRequest)
+	if err == nil && len(read) != 0 {
+		w.WriteHeader(http.StatusOK)
+
+		err = writeVideoJson(w, read)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		return
+	}
+	route.logger.Error("Failed to find", zap.Error(err))
 
 	//Make request to API
 	res, err := route.requestToApi(
@@ -61,6 +71,14 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	err = route.repository.Create(r.Context(), video, videoRequest)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		route.logger.Error("Failed to create video_data instance", zap.Error(err))
+		return
+	}
+
 	//Writes to html page
 	w.WriteHeader(http.StatusOK)
 	err = writeVideoJson(w, video)
@@ -71,7 +89,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (route *Route) requestToApi(APIurl string, request VideoRequest) (*http.Response, error) {
+func (route *Route) requestToApi(APIurl string, request models.VideoRequest) (*http.Response, error) {
 
 	configuration := config.API()
 
@@ -111,7 +129,7 @@ func writeVideoJson(w io.Writer, video []models.YTVideo) error {
 	return encoder.Encode(video)
 }
 
-func isValidVideoRequest(request VideoRequest) (bool, error) {
+func isValidVideoRequest(request models.VideoRequest) (bool, error) {
 	matchedVideo, err := regexp.MatchString("^[a-zA-Z0-9_-]{11}$", request.VideoID)
 
 	matchedLang, err := regexp.MatchString("^[a-zA-Z]{2}$", request.Language)

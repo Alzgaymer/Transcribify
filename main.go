@@ -15,6 +15,7 @@ import (
 	"yt-video-transcriptor/config"
 	"yt-video-transcriptor/database"
 	"yt-video-transcriptor/logging"
+	"yt-video-transcriptor/models/repository"
 	"yt-video-transcriptor/routes"
 	"yt-video-transcriptor/routes/middlewares"
 )
@@ -77,7 +78,7 @@ func main() {
 	<-ctx.Done()
 }
 
-func service(logger *zap.Logger, client *http.Client, repository database.Repository) http.Handler {
+func service(logger *zap.Logger, client *http.Client, repository repository.Repository) http.Handler {
 
 	router := chi.NewRouter()
 
@@ -103,11 +104,12 @@ func Logger() *zap.Logger {
 	}
 	return logger
 }
-func Database(ctx context.Context, attemptsToConnect uint, sleep time.Duration) database.Repository {
+func Database(ctx context.Context, attemptsToConnect uint, sleep time.Duration) repository.Repository {
 	client, err := database.NewClient(ctx, attemptsToConnect, sleep)
 	if err != nil {
-		log.Fatal(err)
+		//log.Fatal(err)
+		return nil
 	}
 
-	return database.NewPostgres(client)
+	return repository.NewYTVideoRepository(client)
 }

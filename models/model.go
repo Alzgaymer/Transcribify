@@ -61,3 +61,33 @@ func (t *Transcription) UnmarshalJSON(data []byte) error {
 	t.Subtitle = strconv.Itoa(rawI.Subtitle)
 	return nil
 }
+
+type VideoRequest struct {
+	VideoID  string `json:"v"`
+	Language string `json:"lang"`
+}
+
+func YTVideoToJsonb(videos []YTVideo) (json.RawMessage, error) {
+	var jsonData []byte
+	var err error
+
+	if len(videos) > 0 {
+		jsonData, err = json.Marshal(videos)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		jsonData = []byte("[]")
+	}
+
+	return jsonData, nil
+}
+
+func RawMessageToYTVideo(raw json.RawMessage) ([]YTVideo, error) {
+	ytVideo := make([]YTVideo, 0)
+	err := json.Unmarshal(raw, &ytVideo)
+	if err != nil {
+		return nil, err
+	}
+	return ytVideo, nil
+}

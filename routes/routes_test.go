@@ -56,12 +56,12 @@ func Test_responseToYTVideo(t *testing.T) {
 func Test_isValidVideoRequest(t *testing.T) {
 	tests := []struct {
 		name        string
-		data        VideoRequest
+		data        models.VideoRequest
 		expectedRes bool
 	}{
 		{
 			name: "Valid input",
-			data: VideoRequest{
+			data: models.VideoRequest{
 				VideoID:  "12345678901",
 				Language: "ru",
 			},
@@ -69,7 +69,7 @@ func Test_isValidVideoRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid video id (len: 10)",
-			data: VideoRequest{
+			data: models.VideoRequest{
 				VideoID:  "1234567890",
 				Language: "ru",
 			},
@@ -77,7 +77,7 @@ func Test_isValidVideoRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid language (with numbers) (len: 2)",
-			data: VideoRequest{
+			data: models.VideoRequest{
 				VideoID:  "12345678901",
 				Language: "r1",
 			},
@@ -85,7 +85,7 @@ func Test_isValidVideoRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid language (with numbers) (len: 1)",
-			data: VideoRequest{
+			data: models.VideoRequest{
 				VideoID:  "12345678901",
 				Language: "1",
 			},
@@ -93,7 +93,7 @@ func Test_isValidVideoRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid video id (len: 0)",
-			data: VideoRequest{
+			data: models.VideoRequest{
 				VideoID:  "",
 				Language: "ru",
 			},
@@ -101,7 +101,7 @@ func Test_isValidVideoRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid language (len: 0)",
-			data: VideoRequest{
+			data: models.VideoRequest{
 				VideoID:  "12345678901",
 				Language: "",
 			},
@@ -109,7 +109,7 @@ func Test_isValidVideoRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid  video id & language (len: 0)",
-			data: VideoRequest{
+			data: models.VideoRequest{
 				VideoID:  "",
 				Language: "",
 			},

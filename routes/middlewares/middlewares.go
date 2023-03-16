@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"yt-video-transcriptor/routes"
+	"yt-video-transcriptor/models"
 )
 
 func Logging(logger *zap.Logger) func(next http.Handler) http.Handler {
@@ -16,7 +16,7 @@ func Logging(logger *zap.Logger) func(next http.Handler) http.Handler {
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var (
-				videoRequest = routes.VideoRequest{}
+				videoRequest = models.VideoRequest{}
 			)
 			// Copying url
 			query, err := copyUrl(r.URL.RawQuery)
