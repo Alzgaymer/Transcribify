@@ -107,8 +107,7 @@ func Logger() *zap.Logger {
 func Database(ctx context.Context, attemptsToConnect uint, sleep time.Duration) repository.Repository {
 	client, err := database.NewClient(ctx, attemptsToConnect, sleep)
 	if err != nil {
-		//log.Fatal(err)
-		return nil
+		log.Fatal(err)
 	}
 
 	return repository.NewYTVideoRepository(client)

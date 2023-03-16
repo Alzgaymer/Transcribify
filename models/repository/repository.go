@@ -95,11 +95,10 @@ func (p *YTVideoRepository) Read(ctx context.Context, request models.VideoReques
 			return nil, err
 		}
 
-		ytVideo, err := models.RawMessageToYTVideo(video)
+		err = json.Unmarshal(video, &videos)
 		if err != nil {
 			return nil, err
 		}
-		videos = append(videos, ytVideo...)
 	}
 
 	if rows.Err() != nil {

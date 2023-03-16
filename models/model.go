@@ -82,12 +82,3 @@ func YTVideoToJsonb(videos []YTVideo) (json.RawMessage, error) {
 
 	return jsonData, nil
 }
-
-func RawMessageToYTVideo(raw json.RawMessage) ([]YTVideo, error) {
-	ytVideo := make([]YTVideo, 0)
-	err := json.Unmarshal(raw, &ytVideo)
-	if err != nil {
-		return nil, err
-	}
-	return ytVideo, nil
-}
