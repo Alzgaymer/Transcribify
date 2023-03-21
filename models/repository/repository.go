@@ -11,6 +11,8 @@ import (
 	"yt-video-transcriptor/models"
 )
 
+//go:generate mockgen -destination=mocks/mock_repository.go -package=mocks yt-video-transcriptor/models/repository Repository
+
 type Repository interface {
 	Create(context.Context, []models.YTVideo, models.VideoRequest) error
 	Read(context.Context, models.VideoRequest) ([]models.YTVideo, error)

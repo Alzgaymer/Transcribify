@@ -44,6 +44,7 @@ func copyUrl(uri string) (url.Values, error) {
 		buf      []byte
 		writeBuf = bytes.NewBuffer(buf)
 	)
+
 	_, err := io.Copy(writeBuf, strings.NewReader(uri))
 	if err != nil {
 		return nil, err
