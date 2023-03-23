@@ -1,6 +1,17 @@
 version: '3.9'
 
 services:
+  migrate:
+    image: migrate/migrate
+    networks:
+      - new
+    volumes:
+      - ./migrations/postgres:/migrations
+    command: ["-path", "./migrations", "-database", "postgres://postgres:postgrespw@database:5432/postgres?sslmode=disable", "up"]
+    depends_on:
+      db:
+        condition: service_healthy
+
   db:
     image: postgres:15
     restart: always
@@ -9,6 +20,15 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_DATABASE}
     ports:
-      - "5432:5432"
+      -  ${DB_PORT}:${DB_PORT}
+    networks:
+      new:
+        aliases:
+            - database
     healthcheck:
-      test: ["CMD","pg_isready", "-h", "localhost" ,"-p", "5432"]
+      test: ["CMD","pg_isready", "-h", "localhost" ,"-p", "${DB_PORT}"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+networks:
+      new:
