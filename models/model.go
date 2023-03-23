@@ -6,6 +6,7 @@ import (
 )
 
 type YTVideo struct {
+	VideoRequest
 	Title           string          `json:"title"`
 	Description     string          `json:"description"`
 	AvailableLangs  []string        `json:"availableLangs"`
@@ -65,20 +66,4 @@ func (t *Transcription) UnmarshalJSON(data []byte) error {
 type VideoRequest struct {
 	VideoID  string `json:"v"`
 	Language string `json:"lang"`
-}
-
-func YTVideoToJsonb(videos []YTVideo) (json.RawMessage, error) {
-	var jsonData []byte
-	var err error
-
-	if len(videos) > 0 {
-		jsonData, err = json.Marshal(videos)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		jsonData = []byte("[]")
-	}
-
-	return jsonData, nil
 }

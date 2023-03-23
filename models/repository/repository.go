@@ -12,10 +12,9 @@ import (
 )
 
 //go:generate mockgen -destination=mocks/mock_repository.go -package=mocks yt-video-transcriptor/models/repository Repository
-
 type Repository interface {
-	Create(context.Context, []models.YTVideo, models.VideoRequest) error
-	Read(context.Context, models.VideoRequest) ([]models.YTVideo, error)
+	Create(context.Context, models.YTVideo) error
+	Read(context.Context, models.VideoRequest) (models.YTVideo, error)
 	Update(context.Context, string, models.YTVideo) error
 	Delete(context.Context, string) error
 }
@@ -34,7 +33,7 @@ func formatQuery(q string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }
 
-func (p *YTVideoRepository) Create(ctx context.Context, video []models.YTVideo, request models.VideoRequest) error {
+func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo) error {
 
 	var (
 		rawQuery = `INSERT INTO video_data(
@@ -48,15 +47,15 @@ func (p *YTVideoRepository) Create(ctx context.Context, video []models.YTVideo, 
 		id    int
 	)
 
-	jsonData, err := models.YTVideoToJsonb(video)
+	jsonData, err := json.Marshal(video)
 	if err != nil {
 		return err
 	}
 
 	err = p.client.QueryRow(ctx,
 		query,
-		request.VideoID,
-		request.Language,
+		video.VideoID,
+		video.Language,
 		jsonData,
 	).Scan(&id)
 
@@ -75,39 +74,41 @@ func (p *YTVideoRepository) Create(ctx context.Context, video []models.YTVideo, 
 	return nil
 }
 
-func (p *YTVideoRepository) Read(ctx context.Context, request models.VideoRequest) ([]models.YTVideo, error) {
+func (p *YTVideoRepository) Read(ctx context.Context, request models.VideoRequest) (models.YTVideo, error) {
 	var (
 		rawQuery = `SELECT json_data 
 					FROM video_data as vd
 					WHERE vd.video_id = $1 and
 					      vd.language = $2`
-		query  = formatQuery(rawQuery)
-		videos = make([]models.YTVideo, 0)
+		query    = formatQuery(rawQuery)
+		rawVideo json.RawMessage
+		video    = models.YTVideo{
+			VideoRequest: request,
+		}
 	)
 
 	rows, err := p.client.Query(ctx, query, request.VideoID, request.Language)
 	if err != nil {
-		return nil, err
+		return video, err
 	}
 
 	for rows.Next() {
-		var video json.RawMessage
-		err = rows.Scan(&video)
+		err = rows.Scan(&rawVideo)
 		if err != nil {
-			return nil, err
+			return video, err
 		}
 
-		err = json.Unmarshal(video, &videos)
+		err = json.Unmarshal(rawVideo, &video)
 		if err != nil {
-			return nil, err
+			return video, err
 		}
 	}
 
 	if rows.Err() != nil {
-		return nil, err
+		return video, err
 	}
 
-	return videos, nil
+	return video, nil
 }
 
 func (p *YTVideoRepository) Update(ctx context.Context, s string, video models.YTVideo) error {

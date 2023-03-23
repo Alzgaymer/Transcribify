@@ -32,17 +32,17 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockRepository) Create(arg0 context.Context, arg1 []models.YTVideo, arg2 models.VideoRequest) error {
+func (m *MockRepository) Create(arg0 context.Context, arg1 models.YTVideo) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Create", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockRepositoryMockRecorder) Create(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Create(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), arg0, arg1)
 }
 
 // Delete mocks base method.
@@ -60,10 +60,10 @@ func (mr *MockRepositoryMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Cal
 }
 
 // Read mocks base method.
-func (m *MockRepository) Read(arg0 context.Context, arg1 models.VideoRequest) ([]models.YTVideo, error) {
+func (m *MockRepository) Read(arg0 context.Context, arg1 models.VideoRequest) (models.YTVideo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Read", arg0, arg1)
-	ret0, _ := ret[0].([]models.YTVideo)
+	ret0, _ := ret[0].(models.YTVideo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

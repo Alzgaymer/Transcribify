@@ -37,54 +37,50 @@ func Test_formatQuery(t *testing.T) {
 }
 
 func TestYTVideoRepository_Create(t *testing.T) {
-	type MockHandler func(*mocks.MockRepository, context.Context, models.VideoRequest, []models.YTVideo)
+	type MockHandler func(*mocks.MockRepository, context.Context, models.YTVideo)
 
 	testCases := []struct {
 		name    string
 		request models.VideoRequest
-		videos  []models.YTVideo
+		videos  models.YTVideo
 		mock    MockHandler
 		wantErr bool
 	}{
 		{
 			name: "successful create",
-			request: models.VideoRequest{
-				VideoID:  "video_id_1",
-				Language: "en",
-			},
-			videos: []models.YTVideo{
-				{
-					Title: "Hello, World!",
+			videos: models.YTVideo{
+				VideoRequest: models.VideoRequest{
+					VideoID:  "video_id_1",
+					Language: "en",
 				},
+				Title: "Hello, World!",
 			},
+
 			mock: func(
 				mockRepo *mocks.MockRepository,
 				ctx context.Context,
-				req models.VideoRequest,
-				videos []models.YTVideo) {
+				videos models.YTVideo) {
 
-				mockRepo.EXPECT().Create(ctx, videos, req).Return(nil)
+				mockRepo.EXPECT().Create(ctx, videos).Return(nil)
 			},
 			wantErr: false,
 		},
 		{
 			name: "create error",
-			request: models.VideoRequest{
-				VideoID:  "video_id_2",
-				Language: "en",
-			},
-			videos: []models.YTVideo{
-				{
-					Title: "Hello, World!",
+			videos: models.YTVideo{
+				VideoRequest: models.VideoRequest{
+					VideoID:  "video_id_2",
+					Language: "en",
 				},
+				Title: "Hello, World!",
 			},
+
 			mock: func(
 				mockRepo *mocks.MockRepository,
 				ctx context.Context,
-				req models.VideoRequest,
-				videos []models.YTVideo) {
+				videos models.YTVideo) {
 
-				mockRepo.EXPECT().Create(ctx, videos, req).Return(errors.New("create error"))
+				mockRepo.EXPECT().Create(ctx, videos).Return(errors.New("create error"))
 			},
 			wantErr: true,
 		},
@@ -92,16 +88,16 @@ func TestYTVideoRepository_Create(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
+			ctrl, ctx := gomock.WithContext(context.Background(), t)
 			defer ctrl.Finish()
 
 			mockRepo := mocks.NewMockRepository(ctrl)
-			ctx := context.Background()
 
-			tc.mock(mockRepo, ctx, tc.request, tc.videos)
+			tc.mock(mockRepo, ctx, tc.videos)
 
-			err := mockRepo.Create(ctx, tc.videos, tc.request)
-			assert.Equal(t, tc.wantErr, (err != nil))
+			err := mockRepo.Create(ctx, tc.videos)
+
+			assert.Equal(t, tc.wantErr, err != nil)
 		})
 	}
 }

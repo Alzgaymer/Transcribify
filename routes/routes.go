@@ -27,20 +27,22 @@ func NewRoute(logger *zap.Logger, client *http.Client, repository repository.Rep
 func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request) {
 
 	// Get the video ID and language from the query
-	videoRequest := models.VideoRequest{
-		VideoID:  r.URL.Query().Get("v"),
-		Language: r.URL.Query().Get("lang"),
+	video := models.YTVideo{
+		VideoRequest: models.VideoRequest{
+			VideoID:  r.URL.Query().Get("v"),
+			Language: r.URL.Query().Get("lang"),
+		},
 	}
 
 	//Validating request
-	if Valid, err := isValidVideoRequest(videoRequest); !Valid || err != nil {
+	if Valid, err := isValidVideoRequest(video.VideoRequest); !Valid || err != nil {
 		w.WriteHeader(http.StatusLengthRequired)
 		return
 	}
 
 	//Find in repository
-	read, err := route.repository.Read(r.Context(), videoRequest)
-	if err == nil && len(read) != 0 {
+	read, err := route.repository.Read(r.Context(), video.VideoRequest)
+	if err == nil {
 		w.WriteHeader(http.StatusOK)
 
 		err = writeVideoJson(w, read)
@@ -56,7 +58,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	//Make request to API
 	res, err := route.requestToApi(
 		"https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=%s&lang=%s",
-		videoRequest)
+		video.VideoRequest)
 	if err != nil {
 		route.logger.Error("Failed to get transcription", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
@@ -64,15 +66,17 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	}
 	defer res.Body.Close()
 
-	//Reading response.Body into []model.YTVideo
-	video, err := responseToYTVideo(res.Body)
+	//Reading response.Body into model.YTVideo
+	tempVideo, err := responseToYTVideo(res.Body)
 	if err != nil {
 		route.logger.Error("Failed to unmarshal data", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	tempVideo.VideoRequest = video.VideoRequest
+	video = tempVideo
 
-	err = route.repository.Create(r.Context(), video, videoRequest)
+	err = route.repository.Create(r.Context(), video)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		route.logger.Error("Failed to create video_data instance", zap.Error(err))
@@ -107,21 +111,21 @@ func (route *Route) requestToApi(APIurl string, request models.VideoRequest) (*h
 	return route.client.Do(req)
 }
 
-func responseToYTVideo(res io.Reader) ([]models.YTVideo, error) {
+func responseToYTVideo(res io.Reader) (models.YTVideo, error) {
 	if res == nil {
-		return nil, errors.New("io.Reader is nil")
+		return models.YTVideo{}, errors.New("io.Reader is nil")
 	}
 
 	var data []models.YTVideo
 	err := json.NewDecoder(res).Decode(&data)
 	if err != nil {
-		return nil, err
+		return models.YTVideo{}, err
 	}
 
-	return data, nil
+	return data[0], nil
 }
 
-func writeVideoJson(w io.Writer, video []models.YTVideo) error {
+func writeVideoJson(w io.Writer, video models.YTVideo) error {
 
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "    ")

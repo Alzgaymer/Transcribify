@@ -12,25 +12,23 @@ import (
 
 // Tests only unsuccessful cases
 func Test_responseToYTVideo(t *testing.T) {
-	NilModels := make([]models.YTVideo, 0)
-	NilModels = nil
 
 	testcases := []struct {
 		name          string
 		inputResponse io.Reader
-		data          []models.YTVideo
+		data          models.YTVideo
 		expectedErr   error
 	}{
 		{
 			name:          "String input (len: 0)",
 			inputResponse: strings.NewReader(""),
-			data:          NilModels,
+			data:          models.YTVideo{},
 			expectedErr:   io.EOF,
 		},
 		{
 			name:          "Nil reader",
 			inputResponse: nil,
-			data:          NilModels,
+			data:          models.YTVideo{},
 			expectedErr:   errors.New("io.Reader is nil"),
 		},
 	}
