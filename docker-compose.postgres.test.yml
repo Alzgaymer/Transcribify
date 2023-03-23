@@ -1,6 +1,7 @@
 version: '3.9'
 
 services:
+  #https://github.com/golang-migrate/migrate
   migration:
     image: migrate/migrate
     networks:
@@ -30,5 +31,6 @@ services:
       interval: 3s
       timeout: 2s
       retries: 5
+
 networks:
       new:
