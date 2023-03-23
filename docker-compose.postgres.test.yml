@@ -3,7 +3,7 @@ version: '3.9'
 services:
   #https://github.com/golang-migrate/migrate
   migration:
-    image: migrate/migrate
+    image: migrate/migrate:4
     networks:
       - new
     volumes:
