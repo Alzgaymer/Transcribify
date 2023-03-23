@@ -1,13 +1,13 @@
 version: '3.9'
 
 services:
-  migrate:
+  migration:
     image: migrate/migrate
     networks:
       - new
     volumes:
       - ./migrations/postgres:/migrations
-    command: ["-path", "./migrations", "-database", "postgres://postgres:postgrespw@database:5432/postgres?sslmode=disable", "up"]
+    command: ["-path", "./migrations", "-database", "postgres://${DB_USERNAME}:${DB_PASSWORD}@database:${DB_PORT}/${DB_DATABASE}?sslmode=disable", "up"]
     depends_on:
       db:
         condition: service_healthy
