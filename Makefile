@@ -1,11 +1,13 @@
-db-up:
-	docker-compose -f docker-compose.postgres.test.yml up -d
+test:
+	docker compose -f docker-compose.postgres.test.yml up -d
+	go test -v ./...
+	docker compose -f docker-compose.postgres.test.yml down
 
-migrate:
-	migrate -path ./migrations/postgres -database 'postgres://postgres:postgrespw@localhost:5432/postgres?sslmode=disable' up
+#docker compose -f docker-compose.prod.yml
+run:
+	docker run --name my-postgres -e POSTGRES_PASSWORD=postgrespw -e POSTGRES_USER=postgres -e POSTGRES_DATABASE=postgres -p 5432:5432 -d postgres:15
 
-down:
-	migrate -path ./migrations/postgres -database 'postgres://postgres:postgrespw@localhost:5432/postgres?sslmode=disable' down
-	docker-compose  down
+	migrate -verbose -path ./migrations/postgres/. -database 'postgres://postgres:postgrespw@localhost:5432/postgres?sslmode=disable' up 1
 
-build: db-up migrate
+	go run main.go;
+	docker stop -r my-postgres ;
