@@ -63,9 +63,15 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 			"https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=%s&lang=%s",
 			video.VideoRequest.VideoID,
 			video.VideoRequest.Language,
-		), nil, config.APIConfiguration{
-			KeyHeader: "X-RapidAPI-Key", Key: os.Getenv("VIDEO_API_KEY"),
-			APIHeader: "X-RapidAPI-Host", API: os.Getenv("VIDEO_API_URL"),
+		),
+		nil,
+		[]config.APIConfiguration{
+			{
+				Header: "X-RapidAPI-Value", Value: os.Getenv("VIDEO_API_KEY"),
+			},
+			{
+				Header: "X-RapidAPI-Host", Value: os.Getenv("VIDEO_API_URL"),
+			},
 		})
 	if err != nil {
 		route.logger.Info("Failed to get transcription", zap.Error(err))
@@ -98,9 +104,13 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	}
 	openaiRes, err := route.requestToApi(
 		http.MethodPost,
-		"https://api.openai.com/v1/completions", body, config.APIConfiguration{
-			KeyHeader: "", Key: "", //OpenAI-Organization org-P8QTzGDPgjPTZ9CCMwB1Qzq8
-			APIHeader: "Authorization", API: "Bearer " + os.Getenv("OPENAI_API_KEY"),
+		"https://api.openai.com/v1/completions",
+		body,
+		[]config.APIConfiguration{
+			{
+				Header: "Authorization", Value: "Bearer " + os.Getenv("OPENAI_API_KEY"),
+			},
+			//OpenAI-Organization org-P8QTzGDPgjPTZ9CCMwB1Qzq8
 		})
 	if err != nil || openaiRes.Status != "200 OK" {
 
@@ -138,15 +148,12 @@ func formatBody(video *models.YTVideo) (io.Reader, error) {
 	}
 	return strings.NewReader(fmt.Sprintf(str, sb.String())), nil
 }
-func (route *Route) requestToApi(method string, uri string, body io.Reader, configuration config.APIConfiguration) (*http.Response, error) {
+func (route *Route) requestToApi(method string, uri string, body io.Reader, configurations []config.APIConfiguration) (*http.Response, error) {
 
 	req, _ := http.NewRequest(method, uri, body)
 
-	if configuration.APIHeader != "" && configuration.API != "" {
-		req.Header.Add(configuration.APIHeader, configuration.API)
-	}
-	if configuration.KeyHeader != "" && configuration.Key != "" {
-		req.Header.Add(configuration.KeyHeader, configuration.Key)
+	for _, configuration := range configurations {
+		req.Header.Add(configuration.Header, configuration.Value)
 	}
 
 	return route.client.Do(req)

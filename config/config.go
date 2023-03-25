@@ -25,11 +25,8 @@ type RouteConfiguration struct {
 }
 
 type APIConfiguration struct {
-	Key       string `env:"API_KEY"`
-	KeyHeader string `env:"API_KEY_HEADER"`
-
-	API       string `env:"API_URL"`
-	APIHeader string `env:"API_URL_HEADER"`
+	Value  string
+	Header string
 }
 
 type DBConfiguration struct {
