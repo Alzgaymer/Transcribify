@@ -131,6 +131,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 		return
 	}
 }
+
 func formatBody(video *models.YTVideo) (io.Reader, error) {
 	str := "{\n\t\t\"model\": \"text-davinci-003\",\n\t\t\"prompt\": \"I want you to summarize. I give you a youtube video transcription. You giving me summarizing info, what is going on in the video. Here is transcriptions: %s\",\n\t\t\"temperature\": 0.1,\n\t\t\"max_tokens\": 512,\n\t\t\"top_p\": 1,\n\t\t\"frequency_penalty\": 0,\n\t\t\"presence_penalty\": 0\n\t}"
 	var sb strings.Builder
@@ -143,11 +144,12 @@ func formatBody(video *models.YTVideo) (io.Reader, error) {
 	}
 	return strings.NewReader(fmt.Sprintf(str, sb.String())), nil
 }
-func (route *Route) requestToApi(method string, uri string, body io.Reader, configurations map[string]string) (*http.Response, error) {
+
+func (route *Route) requestToApi(method string, uri string, body io.Reader, headers map[string]string) (*http.Response, error) {
 
 	req, _ := http.NewRequest(method, uri, body)
 
-	for key, value := range configurations {
+	for key, value := range headers {
 		req.Header.Add(key, value)
 	}
 
@@ -177,7 +179,8 @@ func writeVideoJson(w io.Writer, obj any) error {
 }
 
 func isValidVideoRequest(request models.VideoRequest) (bool, error) {
-	matchedVideo, err := regexp.MatchString("^[a-zA-Z0-9_-]{11}$", request.VideoID)
+
+	var matchedVideo, err = regexp.MatchString("^[a-zA-Z0-9_-]{11}$", request.VideoID)
 
 	matchedLang, err := regexp.MatchString("^[a-zA-Z]{2}$", request.Language)
 
