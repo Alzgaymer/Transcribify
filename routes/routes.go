@@ -7,7 +7,9 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
+	"strings"
 	"yt-video-transcriptor/config"
 	"yt-video-transcriptor/models"
 	"yt-video-transcriptor/models/repository"
@@ -42,7 +44,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 
 	//Find in repository
 	read, err := route.repository.Read(r.Context(), video.VideoRequest)
-	if err == nil {
+	if err == nil && len(read.Transcription) != 0 {
 		w.WriteHeader(http.StatusOK)
 
 		err = writeVideoJson(w, read)
@@ -53,14 +55,20 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 
 		return
 	}
-	route.logger.Error("Failed to find", zap.Error(err))
+	route.logger.Info("Failed to find", zap.Error(err))
 
 	//Make request to API
 	res, err := route.requestToApi(
-		"https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=%s&lang=%s",
-		video.VideoRequest)
+		http.MethodGet, fmt.Sprintf(
+			"https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=%s&lang=%s",
+			video.VideoRequest.VideoID,
+			video.VideoRequest.Language,
+		), nil, config.APIConfiguration{
+			KeyHeader: "X-RapidAPI-Key", Key: os.Getenv("VIDEO_API_KEY"),
+			APIHeader: "X-RapidAPI-Host", API: os.Getenv("VIDEO_API_URL"),
+		})
 	if err != nil {
-		route.logger.Error("Failed to get transcription", zap.Error(err))
+		route.logger.Info("Failed to get transcription", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -69,7 +77,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	//Reading response.Body into model.YTVideo
 	tempVideo, err := responseToYTVideo(res.Body)
 	if err != nil {
-		route.logger.Error("Failed to unmarshal data", zap.Error(err))
+		route.logger.Info("Failed to unmarshal data", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -79,34 +87,67 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	err = route.repository.Create(r.Context(), video)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		route.logger.Error("Failed to create video_data instance", zap.Error(err))
+		route.logger.Info("Failed to create video_data instance", zap.Error(err))
 		return
 	}
 
-	//Writes to html page
-	w.WriteHeader(http.StatusOK)
-	err = writeVideoJson(w, video)
+	//request to openai
+	body, err := formatBody(&video)
 	if err != nil {
-		route.logger.Error("Failed to encode data", zap.Error(err))
-		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	openaiRes, err := route.requestToApi(
+		http.MethodPost,
+		"https://api.openai.com/v1/completions", body, config.APIConfiguration{
+			KeyHeader: "", Key: "", //OpenAI-Organization org-P8QTzGDPgjPTZ9CCMwB1Qzq8
+			APIHeader: "Authorization", API: "Bearer " + os.Getenv("OPENAI_API_KEY"),
+		})
+	if err != nil || openaiRes.Status != "200 OK" {
+
+		route.logger.Info("Failed to request to openai", zap.Error(err),
+			zap.String("Status", openaiRes.Status))
+
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	defer openaiRes.Body.Close()
+
+	w.WriteHeader(http.StatusOK)
+	var out []byte
+	_, err = openaiRes.Body.Read(out)
+	if err != nil {
+		route.logger.Info("Failed to read response body", zap.Error(err))
+		return
+	}
+	err = writeVideoJson(w, out)
+	if err != nil {
+		route.logger.Error("Failed to write to html", zap.Error(err))
 		return
 	}
 }
+func formatBody(video *models.YTVideo) (io.Reader, error) {
+	str := "{\n\t\t\"model\": \"text-davinci-003\",\n\t\t\"prompt\": \"I want you to summarize. I give you a youtube video transcription. You giving me summarizing info, what is going on in the video. Here is transcriptions: %s\",\n\t\t\"temperature\": 0.1,\n\t\t\"max_tokens\": 512,\n\t\t\"top_p\": 1,\n\t\t\"frequency_penalty\": 0,\n\t\t\"presence_penalty\": 0\n\t}"
+	var sb strings.Builder
 
-func (route *Route) requestToApi(APIurl string, request models.VideoRequest) (*http.Response, error) {
+	for _, transcription := range video.Transcription {
+		err := json.NewEncoder(&sb).Encode(transcription)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return strings.NewReader(fmt.Sprintf(str, sb.String())), nil
+}
+func (route *Route) requestToApi(method string, uri string, body io.Reader, configuration config.APIConfiguration) (*http.Response, error) {
 
-	configuration := config.API()
+	req, _ := http.NewRequest(method, uri, body)
 
-	url := fmt.Sprintf(
-		APIurl,
-		request.VideoID,
-		request.Language,
-	)
-
-	req, _ := http.NewRequest(http.MethodGet, url, nil)
-
-	req.Header.Add("X-RapidAPI-Key", configuration.Key)
-	req.Header.Add("X-RapidAPI-Host", configuration.API)
+	if configuration.APIHeader != "" && configuration.API != "" {
+		req.Header.Add(configuration.APIHeader, configuration.API)
+	}
+	if configuration.KeyHeader != "" && configuration.Key != "" {
+		req.Header.Add(configuration.KeyHeader, configuration.Key)
+	}
 
 	return route.client.Do(req)
 }
@@ -125,12 +166,12 @@ func responseToYTVideo(res io.Reader) (models.YTVideo, error) {
 	return data[0], nil
 }
 
-func writeVideoJson(w io.Writer, video models.YTVideo) error {
+func writeVideoJson(w io.Writer, obj any) error {
 
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "    ")
 
-	return encoder.Encode(video)
+	return encoder.Encode(obj)
 }
 
 func isValidVideoRequest(request models.VideoRequest) (bool, error) {

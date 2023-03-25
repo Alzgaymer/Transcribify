@@ -9,12 +9,6 @@ func Route() RouteConfiguration {
 		Port: os.Getenv("APP_PORT"),
 	}
 }
-func API() APIConfiguration {
-	return APIConfiguration{
-		Key: os.Getenv("API_KEY"),
-		API: os.Getenv("API_URL"),
-	}
-}
 
 func DB() DBConfiguration {
 	return DBConfiguration{
@@ -31,8 +25,11 @@ type RouteConfiguration struct {
 }
 
 type APIConfiguration struct {
-	Key string `env:"API_KEY"`
-	API string `env:"API_URL"`
+	Key       string `env:"API_KEY"`
+	KeyHeader string `env:"API_KEY_HEADER"`
+
+	API       string `env:"API_URL"`
+	APIHeader string `env:"API_URL_HEADER"`
 }
 
 type DBConfiguration struct {
