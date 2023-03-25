@@ -10,7 +10,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"yt-video-transcriptor/config"
 	"yt-video-transcriptor/models"
 	"yt-video-transcriptor/models/repository"
 )
@@ -65,13 +64,9 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 			video.VideoRequest.Language,
 		),
 		nil,
-		[]config.APIConfiguration{
-			{
-				Header: "X-RapidAPI-Value", Value: os.Getenv("VIDEO_API_KEY"),
-			},
-			{
-				Header: "X-RapidAPI-Host", Value: os.Getenv("VIDEO_API_URL"),
-			},
+		map[string]string{
+			"X-RapidAPI-Value": os.Getenv("VIDEO_API_KEY"),
+			"X-RapidAPI-Host":  os.Getenv("VIDEO_API_URL"),
 		})
 	if err != nil {
 		route.logger.Info("Failed to get transcription", zap.Error(err))
@@ -106,12 +101,12 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 		http.MethodPost,
 		"https://api.openai.com/v1/completions",
 		body,
-		[]config.APIConfiguration{
-			{
-				Header: "Authorization", Value: "Bearer " + os.Getenv("OPENAI_API_KEY"),
-			},
-			//OpenAI-Organization org-P8QTzGDPgjPTZ9CCMwB1Qzq8
+		map[string]string{
+			"Authorization": "Bearer " + os.Getenv("OPENAI_API_KEY"),
 		})
+
+	//OpenAI-Organization org-P8QTzGDPgjPTZ9CCMwB1Qzq8
+
 	if err != nil || openaiRes.Status != "200 OK" {
 
 		route.logger.Info("Failed to request to openai", zap.Error(err),
@@ -148,12 +143,12 @@ func formatBody(video *models.YTVideo) (io.Reader, error) {
 	}
 	return strings.NewReader(fmt.Sprintf(str, sb.String())), nil
 }
-func (route *Route) requestToApi(method string, uri string, body io.Reader, configurations []config.APIConfiguration) (*http.Response, error) {
+func (route *Route) requestToApi(method string, uri string, body io.Reader, configurations map[string]string) (*http.Response, error) {
 
 	req, _ := http.NewRequest(method, uri, body)
 
-	for _, configuration := range configurations {
-		req.Header.Add(configuration.Header, configuration.Value)
+	for key, value := range configurations {
+		req.Header.Add(key, value)
 	}
 
 	return route.client.Do(req)

@@ -24,11 +24,6 @@ type RouteConfiguration struct {
 	Port string `env:"APP_PORT"`
 }
 
-type APIConfiguration struct {
-	Value  string
-	Header string
-}
-
 type DBConfiguration struct {
 	Username string `env:"DB_USERNAME"`
 	Password string `env:"DB_PASSWORD"`
