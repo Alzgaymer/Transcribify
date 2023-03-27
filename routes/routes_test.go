@@ -1,55 +1,10 @@
 package routes
 
 import (
-	"errors"
-	"fmt"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"strings"
 	"testing"
 	"yt-video-transcriptor/models"
 )
-
-// Tests only unsuccessful cases
-func Test_responseToYTVideo(t *testing.T) {
-
-	testcases := []struct {
-		name          string
-		inputResponse io.Reader
-		data          models.YTVideo
-		expectedErr   error
-	}{
-		{
-			name:          "String input (len: 0)",
-			inputResponse: strings.NewReader(""),
-			data:          models.YTVideo{},
-			expectedErr:   io.EOF,
-		},
-		{
-			name:          "Nil reader",
-			inputResponse: nil,
-			data:          models.YTVideo{},
-			expectedErr:   errors.New("io.Reader is nil"),
-		},
-	}
-
-	for _, testcase := range testcases {
-		t.Run(testcase.name, func(t *testing.T) {
-
-			var (
-				input    = testcase.inputResponse
-				expected = testcase.data
-			)
-
-			actual, err := responseToYTVideo(input)
-			assert.Equal(t, testcase.expectedErr, err)
-
-			assert.Equal(t, expected, actual,
-				fmt.Sprintf("Failed %s. \nExpected: %v.\nGot: %v", testcase.name, expected, actual))
-
-		})
-	}
-}
 
 func Test_isValidVideoRequest(t *testing.T) {
 	tests := []struct {

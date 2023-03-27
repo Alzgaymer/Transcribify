@@ -12,16 +12,17 @@ import (
 )
 
 //go:generate mockgen -destination=mocks/mock_repository.go -package=mocks yt-video-transcriptor/models/repository Repository
-type Repository interface {
-	Create(context.Context, models.YTVideo) error
-	Read(context.Context, models.VideoRequest) (models.YTVideo, error)
-	Update(context.Context, string, models.YTVideo) error
-	Delete(context.Context, string) error
-}
-
-type YTVideoRepository struct {
-	client *pgx.Conn
-}
+type (
+	Repository interface {
+		Create(context.Context, models.YTVideo, models.VideoRequest) error
+		Read(context.Context, models.VideoRequest) (models.YTVideo, error)
+		Update(context.Context, string, models.YTVideo) error
+		Delete(context.Context, string) error
+	}
+	YTVideoRepository struct {
+		client *pgx.Conn
+	}
+)
 
 func NewYTVideoRepository(client *pgx.Conn) *YTVideoRepository {
 	return &YTVideoRepository{
@@ -33,7 +34,7 @@ func formatQuery(q string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }
 
-func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo) error {
+func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, request models.VideoRequest) error {
 
 	var (
 		rawQuery = `INSERT INTO video_data(
@@ -54,10 +55,14 @@ func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo) er
 
 	err = p.client.QueryRow(ctx,
 		query,
-		video.VideoID,
-		video.Language,
+		request.VideoID,
+		request.Language,
 		jsonData,
 	).Scan(&id)
+
+	if err != nil {
+		return err
+	}
 
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -82,29 +87,18 @@ func (p *YTVideoRepository) Read(ctx context.Context, request models.VideoReques
 					      vd.language = $2`
 		query    = formatQuery(rawQuery)
 		rawVideo json.RawMessage
-		video    = models.YTVideo{
-			VideoRequest: request,
-		}
+		video    models.YTVideo
 	)
 
-	rows, err := p.client.Query(ctx, query, request.VideoID, request.Language)
+	row := p.client.QueryRow(ctx, query, request.VideoID, request.Language)
+
+	err := row.Scan(&rawVideo)
 	if err != nil {
 		return video, err
 	}
 
-	for rows.Next() {
-		err = rows.Scan(&rawVideo)
-		if err != nil {
-			return video, err
-		}
-
-		err = json.Unmarshal(rawVideo, &video)
-		if err != nil {
-			return video, err
-		}
-	}
-
-	if rows.Err() != nil {
+	err = json.Unmarshal(rawVideo, &video)
+	if err != nil {
 		return video, err
 	}
 

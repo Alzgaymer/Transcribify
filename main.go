@@ -14,6 +14,7 @@ import (
 	"time"
 	"yt-video-transcriptor/config"
 	"yt-video-transcriptor/database"
+	"yt-video-transcriptor/finders"
 	"yt-video-transcriptor/logging"
 	"yt-video-transcriptor/models/repository"
 	"yt-video-transcriptor/routes"
@@ -84,7 +85,11 @@ func service(logger *zap.Logger, client *http.Client, repository repository.Repo
 
 	router.Use(middlewares.Logging(logger))
 
-	route := routes.NewRoute(logger, client, repository)
+	route := routes.NewRoute(
+		logger, client, repository,
+		finders.NewDatabaseFinder(repository),
+		finders.NewAPIFinder(client, repository),
+	)
 
 	// Create a route for the GET method that accepts the video ID as a parameter
 	router.Route("/api/v1", func(r chi.Router) {

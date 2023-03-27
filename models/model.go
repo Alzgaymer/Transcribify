@@ -6,7 +6,6 @@ import (
 )
 
 type YTVideo struct {
-	VideoRequest
 	Title           string          `json:"title"`
 	Description     string          `json:"description"`
 	AvailableLangs  []string        `json:"availableLangs"`
