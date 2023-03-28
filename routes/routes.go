@@ -48,7 +48,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 
 	for _, finder := range route.finders {
 		video, err = finder.Find(r.Context(), VideoRequest)
-		if err == nil {
+		if err == nil && video != nil {
 			break
 		}
 	}

@@ -1,20 +1,32 @@
-# Use a multi-stage build to compile the application with Golang Alpine
-FROM golang as build
+# Stage 1: Build the application
+FROM golang:1.19-alpine3.17 AS builder
 
-WORKDIR /go/src/app
+WORKDIR /app
 
-# Copy the source code
+COPY go.mod go.sum ./
+
+# Copy the source code into the container
 COPY . .
 
-# Install mod dependencies
+# Install the dependencies
 RUN go mod download
 
-# Build the Go app
-RUN go build -o main ./main.go
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app ./main.go
 
-# Build a new image from scratch with only the binary
-#FROM alpine:latest
-#
-#COPY --from=build /go/src/app /usr/local/bin/
+# Stage 2: Create the final image
+FROM alpine:3.17
 
-CMD ["./main"]
+# Copy the binary from the builder stage
+COPY --from=builder /app/app /app/app
+
+COPY --from=builder /app/.env /app/.env
+
+# Expose the port that the application listens on
+EXPOSE $APP_PORT
+
+# Set the working directory to the directory containing the binary
+WORKDIR /app
+
+# Run the binary
+CMD ["./app"]

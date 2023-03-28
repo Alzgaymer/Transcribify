@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: golang-app
+    restart: always
+    ports:
+      - ${APP_PORT}:${APP_PORT}
+    env_file:
+      - .env
+    environment:
+      DB_HOST: database
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    networks:
+      - new
+
+  db:
+    image: postgres:15
+    container_name: pg_database
+    restart: always
+    networks:
+      new:
+        aliases:
+          - database
+    environment:
+      POSTGRES_HOST: ${DB_HOST}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+    healthcheck:
+        test: [ "CMD","pg_isready", "-h", "localhost" ,"-p", "${DB_PORT}" ]
+        interval: 3s
+        timeout: 2s
+        retries: 5
+    ports:
+      - ${DB_PORT}:${DB_PORT}
+
+  #https://github.com/golang-migrate/migrate
+  migration:
+    image: migrate/migrate:4
+    container_name: migration_service
+    networks:
+      - new
+    volumes:
+      - ./migrations/postgres:/migrations
+    command: ["-path", "./migrations", "-database", "postgres://${DB_USERNAME}:${DB_PASSWORD}@database:${DB_PORT}/${DB_DATABASE}?sslmode=disable", "up"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+
+networks:
+  new:

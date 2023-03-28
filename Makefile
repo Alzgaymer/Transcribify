@@ -10,10 +10,18 @@ test:
 	docker compose -f docker-compose.postgres.test.yml down
 
 
-run:
+run-local: db-up
 	$(call run-database-prod-migration)
-	go run main.go;
+	go run main.go
 	docker stop my-postgres
 
 db-up:
 	$(call run-database-prod-migration)
+
+run:
+	docker compose -f docker-compose.yml build
+	docker compose -f docker-compose.yml up -d
+down:
+	docker compose -f docker-compose.yml down
+
+

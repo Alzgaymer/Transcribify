@@ -33,8 +33,8 @@ func NewAPIFinder(client *http.Client, repository repository.Repository) *APIFin
 func newAPIFinderWithDefaultHeaders(client *http.Client, repository repository.Repository) *APIFinder {
 	headers := http.Header{}
 
-	headers.Set("X-RapidAPI-Value", os.Getenv("VIDEO_API_KEY"))
-	headers.Set("X-RapidAPI-Host", os.Getenv("VIDEO_API_URL"))
+	headers.Add("X-RapidAPI-Key", os.Getenv("VIDEO_API_KEY"))
+	headers.Add("X-RapidAPI-Host", os.Getenv("VIDEO_API_URL"))
 
 	return NewAPIFinderWithHeaders(
 		client,
