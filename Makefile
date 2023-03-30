@@ -25,3 +25,5 @@ down:
 	docker compose -f docker-compose.yml down
 
 
+lint:
+	golangci-lint run ./...
