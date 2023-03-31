@@ -2,10 +2,14 @@ package routes
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
+	"strings"
 	"yt-video-transcriptor/finders"
 	"yt-video-transcriptor/models"
 	"yt-video-transcriptor/models/repository"
@@ -38,6 +42,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 		}
 		video *models.YTVideo
 		err   error
+		ctx   = r.Context()
 	)
 
 	//Validating request
@@ -47,19 +52,35 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	}
 
 	for _, finder := range route.finders {
-		video, err = finder.Find(r.Context(), VideoRequest)
+		video, err = finder.Find(ctx, VideoRequest)
 		if err == nil && video != nil {
 			break
 		}
 	}
-
+	c := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+	prompt, err := formatPrompt(video)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(nil)
+		route.logger.Info("Error while formatting video to OPENAI prompt", zap.Error(err))
+		return
+	}
+	req := openai.CompletionRequest{
+		Model:     openai.GPT3Ada,
+		MaxTokens: 2,
+		Prompt:    prompt,
+	}
+	resp, err := c.CreateCompletion(ctx, req) // HTTP 400 model`s max tokens 2048 in prompt  ~11`000
+	if err != nil {
+		route.logger.Info("Error while sending request to OPENAI", zap.Error(err))
+		return
+	}
+	route.logger.Info("OPENAI response", zap.Any("resp", resp))
 	w.WriteHeader(http.StatusOK)
-	writeVideoJson(w, video)
+	writeJson(w, resp.Choices[0].Text)
 }
 
-// I want you to summarize. I give you a youtube video transcription. You giving me summarizing info, what is going on in the video. Here is transcriptions: %s
-
-func writeVideoJson(w io.Writer, obj any) error {
+func writeJson(w io.Writer, obj any) error {
 
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "    ")
@@ -74,4 +95,17 @@ func isValidVideoRequest(request models.VideoRequest) (bool, error) {
 	matchedLang, err := regexp.MatchString("^[a-zA-Z]{2}$", request.Language)
 
 	return matchedVideo && matchedLang, err
+}
+
+func formatPrompt(video *models.YTVideo) (string, error) {
+	var (
+		promt    = "I want you to summarize. I give you a youtube video transcription. You giving me summarizing info, what is going on in the video. Here is transcriptions: %s"
+		toInsert strings.Builder
+	)
+	err := json.NewEncoder(&toInsert).Encode(video)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(promt, toInsert.String()), nil
 }
