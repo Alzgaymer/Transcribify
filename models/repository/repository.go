@@ -14,7 +14,7 @@ import (
 //go:generate mockgen -destination=mocks/mock_repository.go -package=mocks yt-video-transcriptor/models/repository Repository
 type (
 	Repository interface {
-		Create(context.Context, models.YTVideo, models.VideoRequest) error
+		Create(context.Context, models.YTVideo, models.VideoRequest) (int, error)
 		Read(context.Context, models.VideoRequest) (models.YTVideo, error)
 		Update(context.Context, string, models.YTVideo) error
 		Delete(context.Context, string) error
@@ -22,6 +22,11 @@ type (
 	YTVideoRepository struct {
 		client *pgx.Conn
 	}
+)
+
+const (
+	NotFound                = -1
+	RepositoryInternalError = -2
 )
 
 func NewYTVideoRepository(client *pgx.Conn) *YTVideoRepository {
@@ -34,7 +39,7 @@ func formatQuery(q string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }
 
-func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, request models.VideoRequest) error {
+func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, request models.VideoRequest) (int, error) {
 
 	var (
 		rawQuery = `INSERT INTO video_data(
@@ -50,7 +55,7 @@ func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, re
 
 	jsonData, err := json.Marshal(video)
 	if err != nil {
-		return err
+		return RepositoryInternalError, err
 	}
 
 	err = p.client.QueryRow(ctx,
@@ -61,22 +66,18 @@ func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, re
 	).Scan(&id)
 
 	if err != nil {
-		return err
-	}
-
-	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			pgErr = err.(*pgconn.PgError)
 			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
 
-			return newErr
+			return RepositoryInternalError, newErr
 		}
 
-		return err
+		return NotFound, err
 	}
 
-	return nil
+	return id, nil
 }
 
 func (p *YTVideoRepository) Read(ctx context.Context, request models.VideoRequest) (models.YTVideo, error) {

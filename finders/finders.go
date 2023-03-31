@@ -84,7 +84,7 @@ func (a *APIFinder) Find(ctx context.Context, video models.VideoRequest) (*model
 		return nil, err
 	}
 
-	err = a.repo.Create(ctx, data[0], video)
+	_, err = a.repo.Create(ctx, data[0], video)
 	if err != nil {
 		return nil, err
 	}

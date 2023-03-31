@@ -12,7 +12,7 @@ type connectionFunc func() error
 
 func NewClient(ctx context.Context, attemptsToConnect uint, sleep time.Duration) (client *pgx.Conn, err error) {
 	configuration := config.DB()
-	dsn := getDSN(configuration)
+	dsn := GetDSN(configuration)
 
 	err = doWithAttempts(attemptsToConnect, sleep, func() error {
 
@@ -32,9 +32,9 @@ func NewClient(ctx context.Context, attemptsToConnect uint, sleep time.Duration)
 	return client, nil
 }
 
-// Uses fmt.Sprintf no need to test
-func getDSN(configuration config.DBConfiguration) string {
-	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s",
+// GetDSN Uses fmt.Sprintf no need to test
+func GetDSN(configuration config.DBConfiguration) string {
+	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 		configuration.Username,
 		configuration.Password,
 		configuration.Host,
