@@ -81,9 +81,7 @@ func TestMain(m *testing.M) {
 	container, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
 		Tag:        "15",
-		Labels: map[string]string{
-			"name": "postgres-test",
-		},
+		Name:       "repository-test-postgres",
 		Env: []string{
 			fmt.Sprintf("POSTGRES_PASSWORD=%s", os.Getenv("DB_PASSWORD")),
 			fmt.Sprintf("POSTGRES_USER=%s", os.Getenv("DB_USERNAME")),
