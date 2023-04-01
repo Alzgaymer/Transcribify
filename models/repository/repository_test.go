@@ -7,6 +7,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5"
+	"github.com/joho/godotenv"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/assert"
@@ -47,14 +48,31 @@ func Test_formatQuery(t *testing.T) {
 
 var db *pgx.Conn
 
+const (
+	PathToRoot     = "../../"
+	MigrateVersion = 1
+)
+
 func TestMain(m *testing.M) {
+
+	err := godotenv.Load(PathToRoot + ".env")
+	if err != nil {
+		log.Fatal(err)
+	}
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		log.Fatalf("Could not construct pool: %s", err)
 	}
 
-	err = pool.Client.Ping()
+	var timeout time.Duration = 20
+
+	pool.MaxWait = timeout * time.Second
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout*time.Second)
+	defer cancelFunc()
+
+	err = pool.Client.PingWithContext(ctx)
 	if err != nil {
 		log.Fatalf("Could not connect to Docker: %s", err)
 	}
@@ -63,32 +81,39 @@ func TestMain(m *testing.M) {
 	container, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
 		Tag:        "15",
+		Labels: map[string]string{
+			"name": "postgres-test",
+		},
 		Env: []string{
 			fmt.Sprintf("POSTGRES_PASSWORD=%s", os.Getenv("DB_PASSWORD")),
 			fmt.Sprintf("POSTGRES_USER=%s", os.Getenv("DB_USERNAME")),
 			fmt.Sprintf("POSTGRES_DB=%s", os.Getenv("DB_DATABASE")),
-			"listen_addresses = '*'",
+			"listen_address='*'",
 		},
 	}, func(config *docker.HostConfig) {
 		// set AutoRemove to true so that stopped container goes away by itself
 		config.AutoRemove = true
 		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
+		config.PortBindings = map[docker.Port][]docker.PortBinding{
+			docker.Port(os.Getenv("DB_PORT") + "/tcp"): {
+				{
+					HostIP:   os.Getenv("DB_HOST"),
+					HostPort: os.Getenv("DB_PORT"),
+				},
+			},
+		}
 	})
 	if err != nil {
 		log.Fatalf("Could not start container: %s", err)
 	}
+
 	databaseUrl := database.GetDSN(config.DB())
 
 	log.Println("Connecting to database on url: ", databaseUrl)
 
-	var timeout time.Duration = 120
 	container.Expire(uint(timeout)) // Tell docker to hard kill the container in 120 seconds
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	pool.MaxWait = timeout * time.Second
-
-	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
-	defer cancelFunc()
 
 	if err = pool.Retry(func() error {
 		db, err = pgx.Connect(ctx, databaseUrl)
@@ -101,13 +126,14 @@ func TestMain(m *testing.M) {
 	}
 
 	// Migrations using migrate package
-	migrations, err := migrate.New(
-		"file://migrations/postgres",
-		databaseUrl)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := migrations.Migrate(1); err != nil {
+	// Migrate if err == nil else panic
+	if migrations, err := migrate.New(
+		"file://"+PathToRoot+"migrations/postgres",
+		databaseUrl); err == nil {
+		if err := migrations.Migrate(MigrateVersion); err != nil {
+			log.Fatal(err)
+		}
+	} else {
 		log.Fatal(err)
 	}
 
@@ -136,10 +162,10 @@ func TestYTVideoRepositoryRepository(t *testing.T) {
 		name string
 
 		id         int
-		returnedId int
+		expectedId int
 
-		model         models.YTVideo
-		returnedModel models.YTVideo
+		video         models.YTVideo
+		expectedVideo models.YTVideo
 
 		request       models.VideoRequest
 		Do            testFunc
@@ -148,17 +174,17 @@ func TestYTVideoRepositoryRepository(t *testing.T) {
 	testData := []testStruct{
 		{
 			name: "Successful Create",
-			model: models.YTVideo{
+			video: models.YTVideo{
 				Transcription: []models.Transcription{
 					{
 						Subtitle: "test",
 					},
 				},
 			},
-			returnedModel: models.YTVideo{},
+			expectedVideo: models.YTVideo{},
 
 			id:         1,
-			returnedId: 1,
+			expectedId: 1,
 
 			request: models.VideoRequest{
 				VideoID:  "00000000000",
@@ -174,7 +200,17 @@ func TestYTVideoRepositoryRepository(t *testing.T) {
 
 	for _, testCase := range testData {
 		t.Run(testCase.name, func(t *testing.T) {
+			ctx := context.Background()
 
+			id, video, err := testCase.Do(ctx, repo,
+				testCase.video,
+				testCase.request,
+				testCase.id,
+			)
+
+			assert.Equal(t, testCase.expectedId, id)
+			assert.Equal(t, testCase.expectedVideo, video)
+			assert.Equal(t, testCase.expectedError, err)
 		})
 	}
 }
