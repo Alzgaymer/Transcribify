@@ -19,4 +19,9 @@
 # Ignored idea files
 .idea
 
+
 *.vs
+
+
+# Ignore test logs
+test.log

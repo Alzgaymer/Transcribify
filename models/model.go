@@ -5,11 +5,18 @@ import (
 	"strconv"
 )
 
+const (
+	VideoIDTag      = "videoID"
+	VideoPattern    = "^[a-zA-Z0-9_-]{11}$"
+	LanguageTag     = "lang"
+	LanguagePattern = "^[a-z]{2}$"
+)
+
 type YTVideo struct {
 	Title           string          `json:"title"`
 	Description     string          `json:"description"`
-	AvailableLangs  []string        `json:"availableLangs"`
-	LengthInSeconds string          `json:"lengthInSeconds"`
+	AvailableLangs  []string        `json:"availableLangs"`  //nolint:tagliatelle
+	LengthInSeconds string          `json:"lengthInSeconds"` //nolint:tagliatelle
 	Thumbnails      []Thumbnails    `json:"thumbnails"`
 	Transcription   []Transcription `json:"transcription"`
 }

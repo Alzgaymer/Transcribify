@@ -51,7 +51,7 @@ func WithDevelopment(dev bool) optionsFunc {
 }
 
 // WithOutputPaths "stderr" as default
-func WithOutputPaths(paths []string) optionsFunc {
+func WithOutputPaths(paths ...string) optionsFunc {
 	return func(config *zap.Config) {
 		config.OutputPaths = paths
 	}

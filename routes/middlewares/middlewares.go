@@ -1,33 +1,41 @@
 package middlewares
 
 import (
-	"bytes"
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
-	"io"
+	"log"
 	"net/http"
-	"net/url"
-	"strings"
+	"regexp"
+	"yt-video-transcriptor/logging"
 	"yt-video-transcriptor/models"
 )
 
-func Logging(logger *zap.Logger) func(next http.Handler) http.Handler {
-	//middleware
+func LogVideoRequest(logger *zap.Logger) func(next http.Handler) http.Handler {
+	var err error
+
+	if logger == nil {
+		logger, err = logging.New()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	return func(next http.Handler) http.Handler {
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var (
 				videoRequest = models.VideoRequest{}
+				str          = "Input parameter"
 			)
-			// Copying url
-			query, err := copyUrl(r.URL.RawQuery)
-			if err != nil {
-				w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-				return
-			}
-			videoRequest.VideoID = query.Get("v")
-			videoRequest.Language = query.Get("lang")
 
-			logger.Info("Input parameter",
+			videoRequest.VideoID = chi.URLParam(r, models.VideoIDTag)
+			videoRequest.Language = r.URL.Query().Get(models.LanguageTag)
+
+			if valid, _ := ValidateVideoRequest(videoRequest); !valid {
+				str = "Invalid video request"
+			}
+
+			logger.Info(str,
 				zap.String("Video ID", videoRequest.VideoID),
 				zap.String("Language", videoRequest.Language),
 				zap.String("URL", r.URL.Path),
@@ -38,17 +46,11 @@ func Logging(logger *zap.Logger) func(next http.Handler) http.Handler {
 
 	}
 }
+func ValidateVideoRequest(request models.VideoRequest) (bool, error) {
 
-func copyUrl(uri string) (url.Values, error) {
-	var (
-		buf      []byte
-		writeBuf = bytes.NewBuffer(buf)
-	)
+	var matchedVideo, err = regexp.MatchString(models.VideoPattern, request.VideoID)
 
-	_, err := io.Copy(writeBuf, strings.NewReader(uri))
-	if err != nil {
-		return nil, err
-	}
+	matchedLang, err := regexp.MatchString(models.LanguagePattern, request.Language)
 
-	return url.ParseQuery(writeBuf.String())
+	return matchedVideo && matchedLang, err
 }

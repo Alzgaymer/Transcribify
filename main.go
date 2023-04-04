@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -16,6 +17,7 @@ import (
 	"yt-video-transcriptor/database"
 	"yt-video-transcriptor/finders"
 	"yt-video-transcriptor/logging"
+	"yt-video-transcriptor/models"
 	"yt-video-transcriptor/models/repository"
 	"yt-video-transcriptor/routes"
 	"yt-video-transcriptor/routes/middlewares"
@@ -83,17 +85,17 @@ func service(logger *zap.Logger, client *http.Client, repository repository.Repo
 
 	router := chi.NewRouter()
 
-	router.Use(middlewares.Logging(logger))
-
 	route := routes.NewRoute(
 		logger, client, repository,
 		finders.NewDatabaseFinder(repository),
 		finders.NewAPIFinder(client, repository),
 	)
-
 	// Create a route for the GET method that accepts the video ID as a parameter
 	router.Route("/api/v1", func(r chi.Router) {
-		r.Get("/video", route.GetVideoTranscription) //GET	/api/v1/video?v=&lang=
+
+		//GET	/api/v1/{videoID}?lang=
+		r.With(middlewares.LogVideoRequest(logger)).
+			Get(fmt.Sprintf("/{%s}", models.VideoIDTag), route.GetVideoTranscription)
 	})
 
 	return router
