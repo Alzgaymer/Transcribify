@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"yt-video-transcriptor/models"
-	"yt-video-transcriptor/models/repository"
+	"transcribify/models"
+	"transcribify/models/repository"
 )
 
 type (

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"time"
-	"yt-video-transcriptor/config"
+	"transcribify/config"
 )
 
 type connectionFunc func() error

@@ -3,7 +3,8 @@ package routes
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"yt-video-transcriptor/models"
+	"transcribify/models"
+	"transcribify/routes/middlewares"
 )
 
 func Test_isValidVideoRequest(t *testing.T) {
@@ -76,7 +77,7 @@ func Test_isValidVideoRequest(t *testing.T) {
 			expected = testcase.expectedRes
 		)
 
-		isNotValid, _ := isValidVideoRequest(request)
+		isNotValid, _ := middlewares.ValidateVideoRequest(request)
 
 		assert.Equal(t, expected, isNotValid)
 

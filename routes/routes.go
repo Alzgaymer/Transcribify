@@ -8,10 +8,10 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"strings"
-	"yt-video-transcriptor/finders"
-	"yt-video-transcriptor/models"
-	"yt-video-transcriptor/models/repository"
-	"yt-video-transcriptor/routes/middlewares"
+	"transcribify/finders"
+	"transcribify/models"
+	"transcribify/models/repository"
+	"transcribify/routes/middlewares"
 )
 
 type Route struct {
@@ -46,7 +46,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 
 	//Validating request
 	if Valid, err := middlewares.ValidateVideoRequest(VideoRequest); !Valid || err != nil {
-		w.WriteHeader(http.StatusLengthRequired)
+		w.WriteHeader(http.StatusConflict)
 		return
 	}
 

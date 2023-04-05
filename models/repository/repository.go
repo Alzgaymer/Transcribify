@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"strings"
-	"yt-video-transcriptor/models"
+	"transcribify/models"
 )
 
 //go:generate mockgen -destination=mocks/mock_repository.go -package=mocks yt-video-transcriptor/models/repository Repository
@@ -16,8 +16,8 @@ type (
 	Repository interface {
 		Create(context.Context, models.YTVideo, models.VideoRequest) (int, error)
 		Read(context.Context, models.VideoRequest) (models.YTVideo, error)
-		Update(context.Context, string, models.YTVideo) error
-		Delete(context.Context, string) error
+		Update(context.Context, models.VideoRequest, models.YTVideo) error
+		Delete(context.Context, models.VideoRequest) error
 	}
 	YTVideoRepository struct {
 		client *pgx.Conn
@@ -106,12 +106,42 @@ func (p *YTVideoRepository) Read(ctx context.Context, request models.VideoReques
 	return video, nil
 }
 
-func (p *YTVideoRepository) Update(ctx context.Context, s string, video models.YTVideo) error {
-	//TODO implement me
-	panic("implement me")
+func (p *YTVideoRepository) Update(ctx context.Context, req models.VideoRequest, video models.YTVideo) error {
+	// write a query to update the video
+
+	var (
+		rawQuery = `	UPDATE video_data
+						SET json_data = $1
+						WHERE video_id = $2 AND language = $3;
+					`
+		query    = formatQuery(rawQuery)
+		rawVideo strings.Builder
+	)
+	//Encode video in json
+	if err := json.NewEncoder(&rawVideo).Encode(video); err != nil {
+		return err
+	}
+
+	row := p.client.QueryRow(ctx, query, rawVideo.String(), req.VideoID, req.Language)
+
+	if err := row.Scan(nil); err != pgx.ErrNoRows {
+		return err
+	}
+
+	return nil
 }
 
-func (p *YTVideoRepository) Delete(ctx context.Context, video string) error {
-	//TODO implement me
-	panic("implement me")
+func (p *YTVideoRepository) Delete(ctx context.Context, req models.VideoRequest) error {
+	var (
+		rawQuerry = `	DELETE FROM video_data
+						WHERE video_id = $1 AND language = $2;
+					`
+		query = formatQuery(rawQuerry)
+	)
+
+	if err := p.client.QueryRow(ctx, query, req.VideoID, req.Language).Scan(nil); err != pgx.ErrNoRows {
+		return err
+	}
+
+	return nil
 }

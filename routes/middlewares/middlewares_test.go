@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"yt-video-transcriptor/logging"
-	"yt-video-transcriptor/models"
+	"transcribify/logging"
+	"transcribify/models"
 )
 
 func TestLogging(t *testing.T) {
