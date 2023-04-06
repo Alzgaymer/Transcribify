@@ -13,14 +13,14 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"yt-video-transcriptor/config"
-	"yt-video-transcriptor/database"
-	"yt-video-transcriptor/finders"
-	"yt-video-transcriptor/logging"
-	"yt-video-transcriptor/models"
-	"yt-video-transcriptor/models/repository"
-	"yt-video-transcriptor/routes"
-	"yt-video-transcriptor/routes/middlewares"
+	"transcribify/config"
+	"transcribify/database"
+	"transcribify/finders"
+	"transcribify/logging"
+	"transcribify/models"
+	"transcribify/models/repository"
+	"transcribify/routes"
+	"transcribify/routes/middlewares"
 )
 
 func main() {
@@ -93,9 +93,9 @@ func service(logger *zap.Logger, client *http.Client, repository repository.Repo
 	// Create a route for the GET method that accepts the video ID as a parameter
 	router.Route("/api/v1", func(r chi.Router) {
 
-		//GET	/api/v1/{videoID}?lang=
+		//GET	/api/v1/{videoID:^[a-zA-Z0-9_-]{11}$}?lang=
 		r.With(middlewares.LogVideoRequest(logger)).
-			Get(fmt.Sprintf("/{%s}", models.VideoIDTag), route.GetVideoTranscription)
+			Get(fmt.Sprintf("/{%s:%s}", models.VideoIDTag, models.VideoPattern), route.GetVideoTranscription)
 	})
 
 	return router
@@ -111,6 +111,7 @@ func Logger() *zap.Logger {
 	}
 	return logger
 }
+
 func Database(ctx context.Context, attemptsToConnect uint, sleep time.Duration) repository.Repository {
 	client, err := database.NewClient(ctx, attemptsToConnect, sleep)
 	if err != nil {

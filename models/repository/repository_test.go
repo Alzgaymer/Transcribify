@@ -15,9 +15,9 @@ import (
 	"os"
 	"testing"
 	"time"
-	"yt-video-transcriptor/config"
-	"yt-video-transcriptor/database"
-	"yt-video-transcriptor/models"
+	"transcribify/config"
+	"transcribify/database"
+	"transcribify/models"
 )
 
 func Test_formatQuery(t *testing.T) {
@@ -49,8 +49,9 @@ func Test_formatQuery(t *testing.T) {
 var db *pgx.Conn
 
 const (
-	PathToRoot     = "../../"
-	MigrateVersion = 1
+	PathToRoot      = "../../"
+	MigrateVersion  = 1
+	PostgresVersion = "15"
 )
 
 func TestMain(m *testing.M) {
@@ -65,7 +66,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not construct pool: %s", err)
 	}
 
-	var timeout time.Duration = 20
+	var timeout time.Duration = 120
 
 	pool.MaxWait = timeout * time.Second
 
@@ -78,9 +79,10 @@ func TestMain(m *testing.M) {
 	}
 
 	// pulls an image, creates a container based on it and runs it
+
 	container, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
-		Tag:        "15",
+		Tag:        PostgresVersion,
 		Name:       "repository-test-postgres",
 		Env: []string{
 			fmt.Sprintf("POSTGRES_PASSWORD=%s", os.Getenv("DB_PASSWORD")),
@@ -109,7 +111,7 @@ func TestMain(m *testing.M) {
 
 	log.Println("Connecting to database on url: ", databaseUrl)
 
-	container.Expire(uint(timeout)) // Tell docker to hard kill the container in 120 seconds
+	container.Expire(uint(timeout)) //Tell docker to hard kill the container in 120 seconds
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 
@@ -146,7 +148,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestYTVideoRepositoryRepository(t *testing.T) {
+func TestYTVideoRepository(t *testing.T) {
 	repo := NewYTVideoRepository(db)
 	type testFunc func(
 		ctx context.Context,
@@ -191,6 +193,77 @@ func TestYTVideoRepositoryRepository(t *testing.T) {
 			Do: func(ctx context.Context, repository *YTVideoRepository, video models.YTVideo, request models.VideoRequest, id int) (int, models.YTVideo, error) {
 				id, err := repository.Create(ctx, video, request)
 				return id, models.YTVideo{}, err
+			},
+			expectedError: nil,
+		},
+		{
+			name:  "Successful Read",
+			video: models.YTVideo{},
+			expectedVideo: models.YTVideo{
+				Transcription: []models.Transcription{
+					{
+						Subtitle: "test",
+					},
+				},
+			},
+
+			id:         1,
+			expectedId: 1,
+
+			request: models.VideoRequest{
+				VideoID:  "00000000000",
+				Language: "ua",
+			},
+			Do: func(ctx context.Context, repository *YTVideoRepository, video models.YTVideo, request models.VideoRequest, id int) (int, models.YTVideo, error) {
+				videoFromRead, err := repository.Read(ctx, request)
+				return id, videoFromRead, err
+
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Successful Update",
+			video: models.YTVideo{
+				Transcription: []models.Transcription{
+					{
+						Subtitle: "test1",
+					},
+				},
+			},
+			expectedVideo: models.YTVideo{
+				Transcription: []models.Transcription{
+					{
+						Subtitle: "test1",
+					},
+				},
+			},
+
+			id:         1,
+			expectedId: 1,
+
+			request: models.VideoRequest{
+				VideoID:  "00000000000",
+				Language: "ua",
+			},
+			Do: func(ctx context.Context, repository *YTVideoRepository, video models.YTVideo, request models.VideoRequest, id int) (int, models.YTVideo, error) {
+				err := repository.Update(ctx, request, video)
+				return id, video, err
+
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Successful Delete", video: models.YTVideo{}, expectedVideo: models.YTVideo{},
+			id: 1, expectedId: 1,
+
+			request: models.VideoRequest{
+				VideoID:  "00000000000",
+				Language: "ua",
+			},
+			Do: func(ctx context.Context, repository *YTVideoRepository, video models.YTVideo, request models.VideoRequest, id int) (int, models.YTVideo, error) {
+				err := repository.Delete(ctx, request)
+				return id, video, err
+
 			},
 			expectedError: nil,
 		},

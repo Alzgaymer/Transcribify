@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"yt-video-transcriptor/logging"
-	"yt-video-transcriptor/models"
+	"transcribify/logging"
+	"transcribify/models"
 )
 
 func LogVideoRequest(logger *zap.Logger) func(next http.Handler) http.Handler {
@@ -46,6 +46,7 @@ func LogVideoRequest(logger *zap.Logger) func(next http.Handler) http.Handler {
 
 	}
 }
+
 func ValidateVideoRequest(request models.VideoRequest) (bool, error) {
 
 	var matchedVideo, err = regexp.MatchString(models.VideoPattern, request.VideoID)
