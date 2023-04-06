@@ -36,7 +36,7 @@ func main() {
 		}
 		ctx, cancel = context.WithCancel(context.Background())
 		logger      = Logger()
-		postgres    = Database(ctx, 5, 1*time.Second)
+		postgres    = Database(ctx)
 	)
 
 	server := http.Server{Addr: ":" + configuration.Port, Handler: service(
@@ -112,8 +112,8 @@ func Logger() *zap.Logger {
 	return logger
 }
 
-func Database(ctx context.Context, attemptsToConnect uint, sleep time.Duration) repository.Repository {
-	client, err := database.NewClient(ctx, attemptsToConnect, sleep)
+func Database(ctx context.Context) repository.Repository {
+	client, err := database.NewClient(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

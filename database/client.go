@@ -3,18 +3,17 @@ package database
 import (
 	"context"
 	"fmt"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v5"
 	"time"
 	"transcribify/config"
 )
 
-type connectionFunc func() error
-
-func NewClient(ctx context.Context, attemptsToConnect uint, sleep time.Duration) (client *pgx.Conn, err error) {
+func NewClient(ctx context.Context) (client *pgx.Conn, err error) {
 	configuration := config.DB()
 	dsn := GetDSN(configuration)
 
-	err = doWithAttempts(attemptsToConnect, sleep, func() error {
+	err = doWithAttempts(ctx, func() error {
 
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
@@ -43,12 +42,7 @@ func GetDSN(configuration config.DBConfiguration) string {
 	)
 }
 
-func doWithAttempts(attempts uint, sleep time.Duration, f connectionFunc) error {
-	for i := 0; i < int(attempts); i++ {
-		if err := f(); err != nil {
-			return err
-		}
-		time.Sleep(sleep)
-	}
-	return nil
+func doWithAttempts(ctx context.Context, operation backoff.Operation) error {
+	backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
+	return backoff.Retry(operation, backOff)
 }
