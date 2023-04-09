@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"transcribify/models"
-	"transcribify/models/repository"
+	"transcribify/internal/models"
+	"transcribify/pkg/repository"
 )
 
 type (
@@ -19,18 +19,18 @@ type (
 	APIFinder struct {
 		client  *http.Client
 		headers http.Header
-		repo    repository.Repository
+		repo    repository.Video
 	}
 	DatabaseFinder struct {
-		repo repository.Repository
+		repo repository.Video
 	}
 )
 
-func NewAPIFinder(client *http.Client, repository repository.Repository) *APIFinder {
+func NewAPIFinder(client *http.Client, repository repository.Video) *APIFinder {
 	return newAPIFinderWithDefaultHeaders(client, repository)
 }
 
-func newAPIFinderWithDefaultHeaders(client *http.Client, repository repository.Repository) *APIFinder {
+func newAPIFinderWithDefaultHeaders(client *http.Client, repository repository.Video) *APIFinder {
 	headers := http.Header{}
 
 	headers.Add("X-RapidAPI-Key", os.Getenv("VIDEO_API_KEY"))
@@ -43,7 +43,7 @@ func newAPIFinderWithDefaultHeaders(client *http.Client, repository repository.R
 	)
 }
 
-func NewAPIFinderWithHeaders(client *http.Client, headers http.Header, repository repository.Repository) *APIFinder {
+func NewAPIFinderWithHeaders(client *http.Client, headers http.Header, repository repository.Video) *APIFinder {
 	return &APIFinder{
 		client:  client,
 		headers: headers,
@@ -51,7 +51,7 @@ func NewAPIFinderWithHeaders(client *http.Client, headers http.Header, repositor
 	}
 }
 
-func NewDatabaseFinder(repository repository.Repository) *DatabaseFinder {
+func NewDatabaseFinder(repository repository.Video) *DatabaseFinder {
 	return &DatabaseFinder{
 		repo: repository,
 	}

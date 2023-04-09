@@ -1,12 +1,18 @@
-package database
+package dbclient
 
 import (
 	"context"
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
+	"net/http"
 	"time"
-	"transcribify/config"
+	"transcribify/internal/config"
+	"transcribify/pkg/logging"
+
+	"transcribify/pkg/finders"
+	"transcribify/pkg/repository"
 )
 
 func NewClient(ctx context.Context) (client *pgx.Conn, err error) {
@@ -23,7 +29,7 @@ func NewClient(ctx context.Context) (client *pgx.Conn, err error) {
 			return err
 		}
 
-		return nil
+		return client.Ping(ctx)
 	})
 	if err != nil {
 		return nil, err
@@ -44,5 +50,25 @@ func GetDSN(configuration config.DBConfiguration) string {
 
 func doWithAttempts(ctx context.Context, operation backoff.Operation) error {
 	backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
-	return backoff.Retry(operation, backOff)
+	logger, err := logging.New(
+		logging.WithOutputPaths("stderr"),
+	)
+	if err != nil {
+		return err
+	}
+	return backoff.RetryNotify(operation, backOff,
+		func(err error, duration time.Duration) {
+			logger.Info("Connecting to dbclient",
+				zap.Error(err),
+				zap.Duration("Waiting for", duration),
+			)
+		})
+}
+
+// CacheVideoFinders
+func CacheVideoFinders(client *http.Client, repository repository.Video) []finders.Finder {
+	return []finders.Finder{
+		finders.NewDatabaseFinder(repository),
+		finders.NewAPIFinder(client, repository),
+	}
 }

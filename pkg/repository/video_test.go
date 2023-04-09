@@ -15,9 +15,9 @@ import (
 	"os"
 	"testing"
 	"time"
-	"transcribify/config"
-	"transcribify/database"
-	"transcribify/models"
+	"transcribify/internal/config"
+	"transcribify/internal/models"
+	"transcribify/pkg/dbclient"
 )
 
 func Test_formatQuery(t *testing.T) {
@@ -107,9 +107,9 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not start container: %s", err)
 	}
 
-	databaseUrl := database.GetDSN(config.DB())
+	databaseUrl := dbclient.GetDSN(config.DB())
 
-	log.Println("Connecting to database on url: ", databaseUrl)
+	log.Println("Connecting to dbclient on url: ", databaseUrl)
 
 	container.Expire(uint(timeout)) //Tell docker to hard kill the container in 120 seconds
 
@@ -128,7 +128,7 @@ func TestMain(m *testing.M) {
 	// Migrations using migrate package
 	// Migrate if err == nil else panic
 	if migrations, err := migrate.New(
-		"file://"+PathToRoot+"migrations/postgres",
+		"file://"+PathToRoot+"internal/migrations/postgres",
 		databaseUrl); err == nil {
 		if err := migrations.Migrate(MigrateVersion); err != nil {
 			log.Fatal(err)

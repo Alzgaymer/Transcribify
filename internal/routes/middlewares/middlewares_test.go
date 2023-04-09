@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"transcribify/logging"
-	"transcribify/models"
+	"transcribify/internal/models"
+	"transcribify/pkg/logging"
 )
 
 func TestLogging(t *testing.T) {
@@ -22,17 +22,32 @@ func TestLogging(t *testing.T) {
 	}
 
 	logger, err := logging.New(
-		logging.WithOutputPaths("test.log"),
+		logging.WithOutputPaths("stderr"),
 	)
 	if err != nil {
 		t.Errorf("Failed to create logger:%s", err.Error())
 	}
 	testData := []test{
 		{
-			Name:         "Successful logging",
+			Name:         "Using url.Values",
 			ExpectedCode: http.StatusOK,
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				lang := r.URL.Query().Get(models.LanguageTag)
+				if lang == "" {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			}),
+			Endpoint:     "/00000000000",                            //11
+			Query:        fmt.Sprintf("?%s=ua", models.LanguageTag), //?lang=ua
+			ExpectedLang: "ua",
+		},
+		{
+			Name:         "Using through maps",
+			ExpectedCode: http.StatusOK,
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				lang := r.URL.Query()[models.LanguageTag][0]
 				if lang == "" {
 					w.WriteHeader(http.StatusInternalServerError)
 					return

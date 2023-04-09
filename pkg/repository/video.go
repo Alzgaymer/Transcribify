@@ -8,17 +8,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"strings"
-	"transcribify/models"
+	"transcribify/internal/models"
 )
 
 //go:generate mockgen -destination=mocks/mock_repository.go -package=mocks yt-video-transcriptor/models/repository Repository
 type (
-	Repository interface {
-		Create(context.Context, models.YTVideo, models.VideoRequest) (int, error)
-		Read(context.Context, models.VideoRequest) (models.YTVideo, error)
-		Update(context.Context, models.VideoRequest, models.YTVideo) error
-		Delete(context.Context, models.VideoRequest) error
-	}
 	YTVideoRepository struct {
 		client *pgx.Conn
 	}

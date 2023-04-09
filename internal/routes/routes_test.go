@@ -3,8 +3,8 @@ package routes
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"transcribify/models"
-	"transcribify/routes/middlewares"
+	"transcribify/internal/models"
+	"transcribify/internal/routes/middlewares"
 )
 
 func Test_isValidVideoRequest(t *testing.T) {
