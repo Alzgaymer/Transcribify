@@ -12,7 +12,7 @@ services:
     env_file:
       - .env
     environment:
-      DB_HOST: dbclient
+      DB_HOST: database
     depends_on:
       migration:
         condition: service_completed_successfully
@@ -26,14 +26,14 @@ services:
     networks:
       new:
         aliases:
-          - dbclient
+          - database
     environment:
       POSTGRES_HOST: ${DB_HOST}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_DATABASE}
     healthcheck:
-        test: [ "CMD","pg_isready", "-h", "localhost" ,"-p", "${DB_PORT}" ]
+        test: [ "CMD","pg_isready", "-U","${DB_USERNAME}", "-h", "localhost" ,"-p", "${DB_PORT}" ]
         interval: 3s
         timeout: 2s
         retries: 5
@@ -47,8 +47,8 @@ services:
     networks:
       - new
     volumes:
-      - ./migrations/postgres:/migrations
-    command: ["-path", "./internal/migrations", "-dbclient", "postgres://${DB_USERNAME}:${DB_PASSWORD}@dbclient:${DB_PORT}/${DB_DATABASE}?sslmode=disable", "up"]
+      - ./internal/migrations/postgres/:/migrations
+    command: ["-path", "./migrations", "-database", "postgres://${DB_USERNAME}:${DB_PASSWORD}@database:${DB_PORT}/${DB_DATABASE}?sslmode=disable", "up"]
     depends_on:
       db:
         condition: service_healthy

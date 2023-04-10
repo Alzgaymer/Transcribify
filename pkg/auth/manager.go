@@ -6,6 +6,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"math/rand"
 	"time"
+	"transcribify/internal/models"
 )
 
 const (
@@ -13,7 +14,7 @@ const (
 )
 
 type TokenManager interface {
-	NewJWT(userid string) (string, error)
+	NewJWT(userid *models.User) (string, error)
 	Parse(accessToken string) (string, error)
 	NewRefreshToken() (string, error)
 }
@@ -22,11 +23,12 @@ type Manager struct {
 	signingKey string
 }
 
-func (m *Manager) NewJWT(userid string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
-		ExpiresAt: time.Now().Add(tokenTtl).Unix(),
-		Subject:   userid,
-	})
+func (m *Manager) NewJWT(user *models.User) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+	claims["sub"] = user.ID
+	claims["exp"] = time.Now().Add(tokenTtl).Unix()
+	claims["role"] = user.Role
 
 	return token.SignedString([]byte(m.signingKey))
 }

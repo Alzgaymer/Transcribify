@@ -56,10 +56,22 @@ func Router(logger *zap.Logger, client *http.Client, service *service.Service, r
 		r.With(middlewares.LogVideoRequest(logger)).
 			Get(fmt.Sprintf("/{%s:%s}", models.VideoIDTag, models.VideoPattern), route.GetVideoTranscription)
 
-		r.With(route.IdentifyUser).Group(func(r chi.Router) {
-			r.Get("/token", route.GetToken)
-			r.Get("/refresh", route.RefreshToken)
+		r.Route("/auth", func(r chi.Router) {
+			//POST /api/v1/auth/token
+			r.Post("/token", route.GetToken)
+
+			//POST /api/v1/auth/sign-up
+			r.Post("/sign-up", route.SignUp)
+
+			//POST /api/v1/auth/refresh
+			r.With(route.IdentifyUser).
+				Post("/refresh", route.RefreshToken)
 		})
+
+		//GET /api/v1/hello-world
+		r.With(route.IdentifyUser).
+			Get("/hello-world", route.HelloWorld)
+
 	})
 
 	return router

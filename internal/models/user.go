@@ -3,9 +3,10 @@ package models
 import "time"
 
 type User struct {
-	Name      string    `validate:"required"`
-	Password  string    `validate:"required"`
-	Email     string    `validate:"required"`
+	ID        string
+	Email     string `validate:"required"`
+	Password  string `validate:"required"`
+	Role      string
 	CreatedAt time.Time `validate:"required"`
 	LastVisit time.Time `validate:"required"`
 }

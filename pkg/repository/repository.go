@@ -20,12 +20,16 @@ type (
 	}
 
 	User interface {
+		GetUserId(ctx context.Context, login string) (int, error)
+		SignUser(ctx context.Context, login, password string) error
+		SetRefreshToken(ctx context.Context, login, token string) error
+		GetRefreshTokenByID(ctx context.Context, id string) (string, error)
 	}
 )
 
 func NewRepositories(client *pgx.Conn) *Repository {
 	return &Repository{
 		Video: NewYTVideoRepository(client),
-		User:  nil,
+		User:  NewUserRepository(client),
 	}
 }

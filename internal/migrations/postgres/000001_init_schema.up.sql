@@ -6,15 +6,14 @@ CREATE TABLE video (
          length_in_seconds TEXT,
          thumbnails JSONB,
          transcription JSONB,
-         video_id CHAR(11),
+         video_id CHAR(11) ,
          language CHAR(2),
-         UNIQUE(video_id, language)
+        UNIQUE (video_id)
 );
 
 CREATE TABLE users (
        id SERIAL PRIMARY KEY,
-       name TEXT NOT NULL,
-       email TEXT UNIQUE NOT NULL,
+       email TEXT UNIQUE ,
        password TEXT NOT NULL,
        refresh_token TEXT
 );
@@ -25,5 +24,6 @@ CREATE TABLE user_videos (
          video_id CHAR(11) NOT NULL,
          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
          FOREIGN KEY (video_id) REFERENCES video (video_id) ON DELETE CASCADE
+
 );
 

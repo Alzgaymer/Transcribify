@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 	"transcribify/internal/models"
 	"transcribify/internal/routes/middlewares"
 	"transcribify/pkg/finders"
@@ -117,35 +119,116 @@ func (route *Route) IdentifyUser(next http.Handler) http.Handler {
 			return
 		}
 
-		parse, err := route.service.Manager.Parse(headerParts[1])
+		id, err := route.service.Manager.Parse(headerParts[1])
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			route.logger.Info("Token parsing error", zap.Error(err))
 
 			return
 		}
+		ctx := context.WithValue(r.Context(), "sub", id)
 
-		render.JSON(w, r, parse)
-
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func (route *Route) GetToken(w http.ResponseWriter, r *http.Request) {
-	pwhasher := hash.NewSHA1PSHasher(os.Getenv("JWT_SALT"))
-	var input models.SignIn
+func (route *Route) HelloWorld(w http.ResponseWriter, r *http.Request) {
+	render.JSON(w, r, "Hello World")
+}
 
-	err := json.NewDecoder(r.Body).Decode(&input)
+func (route *Route) SignUp(w http.ResponseWriter, r *http.Request) {
+
+	input := route.getSignInData(r)
+
+	input.Password = hash.NewSHA1PSHasher(os.Getenv("JWT_SALT")).Hash(input.Password)
+
+	err := route.repository.User.SignUser(r.Context(), input.Email, input.Password)
+	if err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		route.logger.Info("Failed to sign user", zap.Error(err))
+		return
+	}
+
+	refreshToken, err := route.service.Manager.NewRefreshToken()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		route.logger.Info("Failed to unmarshal request `Body`", zap.Error(err))
+		route.logger.Info("Failed to generate refresh token", zap.Error(err))
 
 		return
 	}
-	pwhasher.Hash(input.Password)
+
+	err = route.repository.User.SetRefreshToken(r.Context(), input.Email, refreshToken)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		route.logger.Info("Failed to set refresh token to database", zap.Error(err))
+
+		return
+	}
+}
+
+func (route *Route) GetToken(w http.ResponseWriter, r *http.Request) {
+
+	input := route.getSignInData(r)
+
+	user, err := route.repository.User.GetUserId(r.Context(), input.Email)
+
+	jwt, err := route.service.Manager.NewJWT(input)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		route.logger.Info("Failed to generate JWT token", zap.Int("user", user), zap.Error(err))
+
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(jwt))
+
 }
 
 func (route *Route) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value("sub").(string)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		route.logger.Info("Failed to get token from context")
+		return
+	}
+
+	token, err := route.repository.User.GetRefreshTokenByID(r.Context(), userId)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		route.logger.Info("Failed to get refresh token from database", zap.Error(err))
+		return
+	}
+
+	id, err := route.service.Manager.Parse(token)
+
+	if userId != id {
+		w.WriteHeader(http.StatusUnauthorized)
+		route.logger.Info("Failed to parse refresh token", zap.Error(err))
+
+		return
+	}
+
+	newJWT, err := route.service.Manager.NewJWT(&models.User{Role: "admin", ID: userId})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		route.logger.Info("Failed to generate new JWT token", zap.Error(err))
+
+		return
+	}
+
+	render.JSON(w, r, newJWT)
+}
+
+func (route *Route) getSignInData(r *http.Request) *models.User {
+	return &models.User{
+		ID:        "",
+		Email:     r.URL.Query().Get("login"),
+		Password:  r.URL.Query().Get("password"),
+		Role:      "",
+		CreatedAt: time.Time{},
+		LastVisit: time.Time{},
+	}
 
 }
 
