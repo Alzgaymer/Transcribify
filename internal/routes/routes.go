@@ -102,31 +102,38 @@ func (route *Route) IdentifyUser(next http.Handler) http.Handler {
 		header := r.Header.Get("Authorization")
 
 		if header == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			route.logger.Info("Empty 'Authorization' header", zap.String("header", header), zap.String("url", r.URL.RawPath))
+
+			route.logger.Info("Empty 'Authorization' header",
+				zap.String("header", header),
+				zap.String("url", r.URL.RawPath))
+			next.ServeHTTP(w, r)
 
 			return
 		}
 
 		headerParts := strings.Split(header, " ")
 		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
-			w.WriteHeader(http.StatusUnauthorized)
-			route.logger.Info("Invalid 'Authorization' header", zap.String("header", header), zap.String("url", r.URL.RawPath))
+
+			route.logger.Info("Invalid 'Authorization' header",
+				zap.String("header", header),
+				zap.String("url", r.URL.RawPath),
+			)
+			next.ServeHTTP(w, r)
 
 			return
 		}
 
 		if len(headerParts[1]) == 0 {
-			w.WriteHeader(http.StatusUnauthorized)
 			route.logger.Info("Token is empty", zap.String("header", header), zap.String("url", r.URL.RawPath))
+			next.ServeHTTP(w, r)
 
 			return
 		}
 
 		id, err := route.service.Manager.Parse(headerParts[1])
 		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
 			route.logger.Info("Token parsing error", zap.Error(err))
+			next.ServeHTTP(w, r)
 
 			return
 		}
@@ -169,37 +176,6 @@ func (route *Route) CheckCookie(next http.Handler) http.Handler {
 
 func (route *Route) SignUp(w http.ResponseWriter, r *http.Request) {
 
-	// Check Authorization header
-	// If exist parse
-	if header := r.Header.Get("Authorization"); header != "" {
-
-		route.logger.Info("", zap.String("header", header))
-
-		headerParts := strings.Split(header, " ")
-		var toParse string
-		if len(headerParts) == 2 {
-			toParse = headerParts[1]
-		} else {
-			toParse = header
-		}
-		id, err := route.service.Manager.Parse(toParse)
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			route.logger.Info("Failed to parse token", zap.String("header", header))
-
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		_, err = w.Write([]byte(fmt.Sprintf("already authorized as user: %s", id)))
-		if err != nil {
-			route.logger.Info("Failed to write into html", zap.Error(err))
-		}
-
-		return
-	}
-
-	// If not - repository.SignIn
 	// Get data from query
 	input := route.getSignInData(r)
 
@@ -226,6 +202,57 @@ func (route *Route) SignUp(w http.ResponseWriter, r *http.Request) {
 
 	SetCookie(w, "access", jwt)
 	route.logger.Info("Set `JWT` token for user", zap.String("user", user), zap.String("jwt", jwt.T))
+}
+
+func GetSubFromCtx(ctx context.Context) string {
+	switch val := ctx.Value("sub"); val {
+	case nil:
+		return ""
+	default:
+		return val.(string)
+	}
+}
+
+func (route *Route) LogIn(w http.ResponseWriter, r *http.Request) {
+
+	user := GetSubFromCtx(r.Context())
+	if user != "" {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(fmt.Sprintf("logged in as user: %s", user)))
+
+		return
+	}
+
+	// Get data from query
+	input := route.getSignInData(r)
+
+	// Created user
+	user, err := route.repository.User.LoginUser(r.Context(),
+		input.Email,
+		hash.NewSHA1PSHasher(os.Getenv("JWT_SALT")).Hash(input.Password))
+	if err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		route.logger.Info("Failed to login user", zap.String("login", input.Email), zap.Error(err))
+		return
+	}
+	route.logger.Info("Get user id", zap.String("user", user))
+
+	//Create token
+	jwt, err := route.service.Manager.NewJWT(&models.User{ID: user}, auth.Token)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		route.logger.Info("Failed to create `JWT` token for user", zap.String("user", user))
+
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	SetCookie(w, "access", jwt)
+	w.Write([]byte(fmt.Sprintf("logged in as user: %s", user)))
+
+	route.logger.Info("Set `JWT` token for user",
+		zap.String("user", user),
+		zap.String("jwt", jwt.T))
 }
 
 func (route *Route) GetToken(w http.ResponseWriter, r *http.Request) {
@@ -313,6 +340,7 @@ func SetCookie(w http.ResponseWriter, name string, token models.Token) {
 		Value:    token.T,
 		Expires:  token.ExpiresAt,
 		HttpOnly: true,
+		Path:     "/api/v1/",
 	}
 
 	http.SetCookie(w, cookie)

@@ -25,6 +25,7 @@ type (
 		// SignUser If user with provided login exist returns his id
 		// If not - creates in database and returns his id
 		SignUser(ctx context.Context, login, password string) (string, error)
+		LoginUser(ctx context.Context, login, password string) (string, error)
 		SetRefreshToken(ctx context.Context, login, token string) error
 		GetRefreshTokenByID(ctx context.Context, id string) (string, error)
 	}

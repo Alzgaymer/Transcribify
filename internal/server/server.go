@@ -62,8 +62,11 @@ func Router(logger *zap.Logger, client *http.Client, service *service.Service, r
 			r.Post("/token", route.GetToken)
 
 			//POST /api/v1/auth/sign-up
-			r.With(route.CheckCookie).
-				Post("/sign-up", route.SignUp)
+			r.Post("/sign-up", route.SignUp)
+
+			//POST /api/v1/auth/login
+			r.With(route.CheckCookie, route.IdentifyUser).
+				Post("/login", route.LogIn)
 		})
 
 		//GET /api/v1/hello-world

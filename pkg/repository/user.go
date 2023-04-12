@@ -55,6 +55,21 @@ func (u *UserRepository) SignUser(ctx context.Context, login, password string) (
 	return fmt.Sprintf("%d", id), nil
 }
 
+func (u *UserRepository) LoginUser(ctx context.Context, login, password string) (string, error) {
+	query := `SELECT id FROM users WHERE email = $1 and password = $2;`
+	var id int
+
+	err := u.client.QueryRow(ctx, query, login, password).Scan(&id)
+	switch {
+	case err == pgx.ErrNoRows:
+		return "", fmt.Errorf("signuser: user(%s) doesn`t exist", login)
+	case err != nil:
+		return "", err
+	default:
+		return fmt.Sprintf("%d", id), nil
+	}
+}
+
 func (u *UserRepository) GetUserId(ctx context.Context, login string) (int, error) {
 	var (
 		rawQuery = `select id from users as u 
