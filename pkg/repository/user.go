@@ -35,20 +35,24 @@ func (u *UserRepository) SetRefreshToken(ctx context.Context, login, token strin
 	return nil
 }
 
-func (u *UserRepository) SignUser(ctx context.Context, login, password string) error {
-	query := `SELECT id FROM users WHERE email = $1 AND password = $2;`
+// SignUser If user with provided login exist returns his id
+// If not - creates in database and returns his id
+func (u *UserRepository) SignUser(ctx context.Context, login, password string) (string, error) {
+	query := `SELECT id FROM users WHERE email = $1;`
 	var id int
 
-	err := u.client.QueryRow(ctx, query, login, login, password).Scan(&id)
+	err := u.client.QueryRow(ctx, query, login).Scan(&id)
 	if err == nil {
-		return fmt.Errorf("signuser: user already exist, its id: %d", id)
+		return fmt.Sprintf("%d", id), fmt.Errorf("signuser: user already exist, its id: %d", id)
 	}
 
-	query = "INSERT INTO users (email, password) VALUES ($1,$2);"
+	query = "INSERT INTO users (email, password) VALUES ($1,$2) returning id;"
 
-	u.client.QueryRow(ctx, query, login, password)
+	if err = u.client.QueryRow(ctx, query, login, password).Scan(&id); err != nil {
+		return "", err
+	}
 
-	return nil
+	return fmt.Sprintf("%d", id), nil
 }
 
 func (u *UserRepository) GetUserId(ctx context.Context, login string) (int, error) {

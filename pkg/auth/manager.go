@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	tokenTtl = 15 * time.Minute
+	Token   = 15 * time.Minute
+	Refresh = 24 * time.Hour
 )
 
 type TokenManager interface {
-	NewJWT(userid *models.User) (string, error)
+	NewJWT(user *models.User, ttl time.Duration) (models.Token, error)
 	Parse(accessToken string) (string, error)
 	NewRefreshToken() (string, error)
 }
@@ -23,14 +24,26 @@ type Manager struct {
 	signingKey string
 }
 
-func (m *Manager) NewJWT(user *models.User) (string, error) {
+func (m *Manager) NewJWT(user *models.User, ttl time.Duration) (models.Token, error) {
+
+	expires := time.Now().Add(ttl)
+
 	token := jwt.New(jwt.SigningMethodHS256)
+
 	claims := token.Claims.(jwt.MapClaims)
-	claims["sub"] = user.ID
-	claims["exp"] = time.Now().Add(tokenTtl).Unix()
+	claims["sub"] = (*user).ID
+	claims["exp"] = expires.Unix()
 	claims["role"] = user.Role
 
-	return token.SignedString([]byte(m.signingKey))
+	signed, err := token.SignedString([]byte(m.signingKey))
+	if err != nil {
+		return models.Token{}, err
+	}
+
+	return models.Token{
+		T:         signed,
+		ExpiresAt: expires,
+	}, nil
 }
 
 func (m *Manager) Parse(accessToken string) (string, error) {
