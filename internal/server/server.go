@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"log"
 	"net/http"
 	"os"
@@ -79,10 +80,12 @@ func Router(logger *zap.Logger, client *http.Client, service *service.Service, r
 }
 
 func Logger() *zap.Logger {
-
+	conf := zap.NewDevelopmentEncoderConfig()
+	conf.EncodeTime = zapcore.TimeEncoderOfLayout(time.UnixDate)
 	logg, err := logging.New(
 		logging.WithDevelopment(true),
 		logging.WithLevel(zap.NewAtomicLevelAt(zap.DebugLevel)),
+		logging.WithEncoderConfig(conf),
 	)
 	if err != nil {
 		log.Fatal(err)
