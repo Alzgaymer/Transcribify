@@ -25,10 +25,10 @@ func Server(ctx context.Context) *http.Server {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	repository := Repository(ctx)
 	return &http.Server{
 		Addr:    ":" + os.Getenv("APP_PORT"),
-		Handler: Router(Logger(), Client(), service.New(), Repository(ctx)),
+		Handler: Router(Logger(), Client(), service.New(*repository), repository),
 	}
 }
 

@@ -180,9 +180,7 @@ func (route *Route) SignUp(w http.ResponseWriter, r *http.Request) {
 	input := route.getSignInData(r)
 
 	// Created user
-	user, err := route.repository.User.SignUser(r.Context(),
-		input.Email,
-		hash.NewSHA1PSHasher(os.Getenv("JWT_SALT")).Hash(input.Password))
+	user, err := route.service.Authorization.SignUser(r.Context(), input)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		route.logger.Info("Failed to create user", zap.Error(err))
@@ -227,7 +225,7 @@ func (route *Route) LogIn(w http.ResponseWriter, r *http.Request) {
 	input := route.getSignInData(r)
 
 	// Created user
-	user, err := route.repository.User.LoginUser(r.Context(),
+	user, err := route.service.Authorization.LoginUser(r.Context(),
 		input.Email,
 		hash.NewSHA1PSHasher(os.Getenv("JWT_SALT")).Hash(input.Password))
 	if err != nil {
@@ -264,7 +262,7 @@ func (route *Route) GetToken(w http.ResponseWriter, r *http.Request) {
 	jwt, err := route.service.Manager.NewJWT(input, 0)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		route.logger.Info("Failed to generate JWT token", zap.Int("user", user), zap.Error(err))
+		route.logger.Info("Failed to generate JWT token", zap.String("user", user), zap.Error(err))
 
 		return
 	}

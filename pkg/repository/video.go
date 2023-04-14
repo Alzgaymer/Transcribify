@@ -18,11 +18,6 @@ type (
 	}
 )
 
-const (
-	NotFound                = -1
-	RepositoryInternalError = -2
-)
-
 func NewYTVideoRepository(client *pgx.Conn) *YTVideoRepository {
 	return &YTVideoRepository{
 		client: client,
@@ -49,7 +44,7 @@ func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, re
 
 	jsonData, err := json.Marshal(video)
 	if err != nil {
-		return RepositoryInternalError, err
+		return InternalRepositoryError, err
 	}
 
 	err = p.client.QueryRow(ctx,
@@ -65,7 +60,7 @@ func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, re
 			pgErr = err.(*pgconn.PgError)
 			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
 
-			return RepositoryInternalError, newErr
+			return InternalRepositoryError, newErr
 		}
 
 		return NotFound, err

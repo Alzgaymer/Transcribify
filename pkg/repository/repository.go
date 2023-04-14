@@ -6,6 +6,11 @@ import (
 	"transcribify/internal/models"
 )
 
+const (
+	NotFound = -1 * (iota + 1)
+	InternalRepositoryError
+)
+
 type (
 	Repository struct {
 		Video Video
@@ -20,12 +25,24 @@ type (
 	}
 
 	User interface {
-		GetUserId(ctx context.Context, login string) (int, error)
+		GetUserId(ctx context.Context, login string) (string, error)
 
-		// SignUser If user with provided login exist returns his id
-		// If not - creates in database and returns his id
-		SignUser(ctx context.Context, login, password string) (string, error)
-		LoginUser(ctx context.Context, login, password string) (string, error)
+		// GetUserByLogin searching in database for user with provided login.
+		// If success returns user`s id.
+		// If failed - returns "-1", error. "-1" means there`re no users with provided login
+		GetUserByLogin(ctx context.Context, login string) (string, error)
+
+		// GetUserByLoginPassword finds user by provided models.User(Email, Password)
+		// If user not found - returns NotFound, and user(user.Email) doesn`t exist
+		// If internal error - returns InternalRepositoryError, error
+		// Else user`s id, nil
+		GetUserByLoginPassword(ctx context.Context, user *models.User) (string, error)
+
+		// PutUser firstly search for existing user.
+		// If found - returns user`s id, error.
+		// If not - inserting. On failure returns InternalRepositoryError, err.
+		// On success returns user`s id, nil
+		PutUser(ctx context.Context, user *models.User) (string, error)
 		SetRefreshToken(ctx context.Context, login, token string) error
 		GetRefreshTokenByID(ctx context.Context, id string) (string, error)
 	}
