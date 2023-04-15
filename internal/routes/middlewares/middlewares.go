@@ -2,10 +2,10 @@ package middlewares
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
 	"log"
 	"net/http"
-	"regexp"
 	"transcribify/internal/models"
 	"transcribify/pkg/logging"
 )
@@ -43,10 +43,11 @@ func LogVideoRequest(logger *zap.Logger) func(next http.Handler) http.Handler {
 }
 
 func ValidateVideoRequest(request models.VideoRequest) (bool, error) {
-
-	var matchedVideo, err = regexp.MatchString(models.VideoPattern, request.VideoID)
-
-	matchedLang, err := regexp.MatchString(models.LanguagePattern, request.Language)
-
-	return matchedVideo && matchedLang, err
+	v := validator.New()
+	switch err := v.Struct(request); err {
+	case nil:
+		return true, nil
+	default:
+		return false, err
+	}
 }

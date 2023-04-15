@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"github.com/jackc/pgx/v5"
 	"transcribify/internal/models"
 )
@@ -47,6 +48,10 @@ type (
 		GetRefreshTokenByID(ctx context.Context, id string) (string, error)
 	}
 )
+
+func convCode(code int) string {
+	return fmt.Sprintf("%d", code)
+}
 
 func NewRepositories(client *pgx.Conn) *Repository {
 	return &Repository{

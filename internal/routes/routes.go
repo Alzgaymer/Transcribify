@@ -60,7 +60,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	)
 
 	//Validating request
-	if Valid, err := middlewares.ValidateVideoRequest(VideoRequest); !Valid || err != nil {
+	if valid, err := middlewares.ValidateVideoRequest(VideoRequest); !valid || err != nil {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}

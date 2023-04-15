@@ -49,9 +49,6 @@ func (u *UserRepository) GetUserByLogin(ctx context.Context, login string) (stri
 
 	return fmt.Sprintf("%d", id), nil
 }
-func convCode(code int) string {
-	return fmt.Sprintf("%d", code)
-}
 
 // PutUser firstly search for existing user.
 // If found - returns user`s id, error.

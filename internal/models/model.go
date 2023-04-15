@@ -6,10 +6,8 @@ import (
 )
 
 const (
-	VideoIDTag      = "videoID"
-	VideoPattern    = "^[a-zA-Z0-9_-]{11}$"
-	LanguageTag     = "lang"
-	LanguagePattern = "^[a-z]{2}$"
+	VideoIDTag  = "videoID"
+	LanguageTag = "lang"
 )
 
 type YTVideo struct {
@@ -70,6 +68,6 @@ func (t *Transcription) UnmarshalJSON(data []byte) error {
 }
 
 type VideoRequest struct {
-	VideoID  string `json:"v"`
-	Language string `json:"lang"`
+	VideoID  string `json:"v" validate:"len=11,alphanum"`
+	Language string `json:"lang" validate:"bcp47_language_tag"`
 }
