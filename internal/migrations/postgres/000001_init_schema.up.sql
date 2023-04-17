@@ -1,5 +1,5 @@
 create table video (
-        id serial primary key,
+        id bigserial primary key,
         title text,
         description text,
         available_langs text[],
@@ -12,21 +12,17 @@ create table video (
 );
 
 create table users (
-        id serial primary key,
+        id bigserial primary key,
         email text unique ,
         password text not null,
         unique (id, email)
 );
 
 create table user_videos (
-        id serial primary key,
+        id bigserial primary key,
         user_id int not null,
         video_id char(11) not null,
         foreign key (user_id) references users (id) on delete cascade,
         foreign key (video_id) references video (video_id) on delete cascade
 
 );
-
-
-
-

@@ -11,6 +11,7 @@ down:
 lint:
 	golangci-lint run ./...
 
+#make add name=
 add:
 	migrate create -ext sql -dir ./internal/migrations/postgres -seq $(name)
 

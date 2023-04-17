@@ -8,14 +8,11 @@ import (
 	"github.com/go-chi/render"
 	"go.uber.org/zap"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 	"transcribify/internal/models"
 	"transcribify/internal/routes/middlewares"
-	"transcribify/pkg/auth"
 	"transcribify/pkg/finders"
-	"transcribify/pkg/hash"
 	"transcribify/pkg/repository"
 	"transcribify/pkg/service"
 )
@@ -95,83 +92,8 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	render.JSON(w, r, video)
 }
 
-// IdentifyUser is a middleware for identifying user token
-func (route *Route) IdentifyUser(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		header := r.Header.Get("Authorization")
-
-		if header == "" {
-
-			route.logger.Info("Empty 'Authorization' header",
-				zap.String("header", header),
-				zap.String("url", r.URL.RawPath))
-			next.ServeHTTP(w, r)
-
-			return
-		}
-
-		headerParts := strings.Split(header, " ")
-		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
-
-			route.logger.Info("Invalid 'Authorization' header",
-				zap.String("header", header),
-				zap.String("url", r.URL.RawPath),
-			)
-			next.ServeHTTP(w, r)
-
-			return
-		}
-
-		if len(headerParts[1]) == 0 {
-			route.logger.Info("Token is empty", zap.String("header", header), zap.String("url", r.URL.RawPath))
-			next.ServeHTTP(w, r)
-
-			return
-		}
-
-		id, err := route.service.Manager.Parse(headerParts[1])
-		if err != nil {
-			route.logger.Info("Token parsing error", zap.Error(err))
-			next.ServeHTTP(w, r)
-
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), "sub", id)
-
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
 func (route *Route) HelloWorld(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, "Hello World")
-}
-
-func (route *Route) CheckCookie(next http.Handler) http.Handler {
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		// Authorization not empty
-		if r.Header.Get("Authorization") != "" {
-			route.logger.Info("`Authorization` header provided")
-			next.ServeHTTP(w, r)
-
-			return
-		}
-
-		token, err := r.Cookie("access")
-		if err != nil {
-			route.logger.Info("No `access` JWT token provided in cookie", zap.Error(err))
-			next.ServeHTTP(w, r)
-
-			return
-		}
-
-		r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.Value))
-
-		next.ServeHTTP(w, r)
-	})
 }
 
 func (route *Route) SignUp(w http.ResponseWriter, r *http.Request) {
@@ -180,26 +102,13 @@ func (route *Route) SignUp(w http.ResponseWriter, r *http.Request) {
 	input := route.getSignInData(r)
 
 	// Created user
-	user, err := route.service.Authorization.SignUser(r.Context(), input)
+	err := route.service.Authorization.SignUser(r.Context(), w, input)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		route.logger.Info("Failed to create user", zap.Error(err))
 
 		return
 	}
-	route.logger.Info("Get user id", zap.String("user", user))
-
-	//Create token
-	jwt, err := route.service.Manager.NewJWT(&models.User{ID: user}, auth.Token)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		route.logger.Info("Failed to create `JWT` token for user", zap.String("user", user))
-
-		return
-	}
-
-	SetCookie(w, "access", jwt)
-	route.logger.Info("Set `JWT` token for user", zap.String("user", user), zap.String("jwt", jwt.T))
 }
 
 func GetSubFromCtx(ctx context.Context) string {
@@ -213,102 +122,26 @@ func GetSubFromCtx(ctx context.Context) string {
 
 func (route *Route) LogIn(w http.ResponseWriter, r *http.Request) {
 
-	user := GetSubFromCtx(r.Context())
-	if user != "" {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("logged in as user: %s", user)))
-
-		return
-	}
-
 	// Get data from query
 	input := route.getSignInData(r)
 
-	// Created user
-	user, err := route.service.Authorization.LoginUser(r.Context(),
-		input.Email,
-		hash.NewSHA1PSHasher(os.Getenv("JWT_SALT")).Hash(input.Password))
+	err := route.service.Authorization.LoginUser(r.Context(), w, input)
 	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
-		route.logger.Info("Failed to login user", zap.String("login", input.Email), zap.Error(err))
-		return
+		w.WriteHeader(http.StatusUnauthorized)
 	}
-	route.logger.Info("Get user id", zap.String("user", user))
-
-	//Create token
-	jwt, err := route.service.Manager.NewJWT(&models.User{ID: user}, auth.Token)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		route.logger.Info("Failed to create `JWT` token for user", zap.String("user", user))
-
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	SetCookie(w, "access", jwt)
-	w.Write([]byte(fmt.Sprintf("logged in as user: %s", user)))
 
 	route.logger.Info("Set `JWT` token for user",
-		zap.String("user", user),
-		zap.String("jwt", jwt.T))
+		zap.Any("user", input))
+
 }
 
 func (route *Route) GetToken(w http.ResponseWriter, r *http.Request) {
 
-	input := route.getSignInData(r)
-
-	user, err := route.repository.User.GetUserId(r.Context(), input.Email)
-
-	jwt, err := route.service.Manager.NewJWT(input, 0)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		route.logger.Info("Failed to generate JWT token", zap.String("user", user), zap.Error(err))
-
-		return
-	}
-	w.WriteHeader(http.StatusCreated)
-	SetCookie(w, "access", jwt)
-
-}
-
-func (route *Route) RefreshToken(w http.ResponseWriter, r *http.Request) {
-	userId, ok := r.Context().Value("sub").(string)
-	if !ok {
-		w.WriteHeader(http.StatusInternalServerError)
-		route.logger.Info("Failed to get token from context")
-		return
-	}
-
-	token, err := route.repository.User.GetRefreshTokenByID(r.Context(), userId)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		route.logger.Info("Failed to get refresh token from database", zap.Error(err))
-
-		return
-	}
-
-	id, err := route.service.Manager.Parse(token)
-	if userId != id {
-		w.WriteHeader(http.StatusUnauthorized)
-		route.logger.Info("Failed to parse refresh token", zap.Error(err))
-
-		return
-	}
-
-	newJWT, err := route.service.Manager.NewJWT(&models.User{Role: "admin", ID: userId}, auth.Token)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		route.logger.Info("Failed to generate new JWT token", zap.Error(err))
-
-		return
-	}
-
-	render.JSON(w, r, newJWT)
 }
 
 func (route *Route) getSignInData(r *http.Request) *models.User {
 	return &models.User{
-		ID:        "",
+		ID:        0,
 		Email:     r.URL.Query().Get("login"),
 		Password:  r.URL.Query().Get("password"),
 		Role:      "",
@@ -329,17 +162,4 @@ func formatPrompt(video *models.YTVideo) (string, error) {
 	}
 
 	return fmt.Sprintf(promt, toInsert.String()), nil
-}
-
-func SetCookie(w http.ResponseWriter, name string, token models.Token) {
-
-	cookie := &http.Cookie{
-		Name:     name,
-		Value:    token.T,
-		Expires:  token.ExpiresAt,
-		HttpOnly: true,
-		Path:     "/api/v1/",
-	}
-
-	http.SetCookie(w, cookie)
 }

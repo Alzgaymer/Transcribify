@@ -1,4 +1,4 @@
-create or replace function get_user(p_login text, p_password text default null) returns users as
+create or replace function get_user(p_login text, p_password text default null) returns setof users as
 $$
 begin
     if p_password is null then
@@ -15,13 +15,14 @@ $$
     language plpgsql;
 
 
-create or replace function put_user(p_email TEXT,p_password TEXT) returns users as
+create or replace function put_user(p_email TEXT,p_password TEXT) returns setof users as
 $$
 begin
     INSERT INTO users (email, password)
     VALUES (p_email, p_password)
-    ON CONFLICT (email) do nothing
-    returning *;
+    ON CONFLICT (email) do nothing;
+
+    RETURN QUERY SELECT * FROM users WHERE email = p_email;
 end;
 $$
     language plpgsql;

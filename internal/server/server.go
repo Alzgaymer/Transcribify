@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -11,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-	"transcribify/internal/models"
 	"transcribify/internal/routes"
 	"transcribify/internal/routes/middlewares"
 	"transcribify/pkg/dbclient"
@@ -53,9 +51,10 @@ func Router(logger *zap.Logger, client *http.Client, service *service.Service, r
 
 	// Create a route for the GET method that accepts the video ID as a parameter
 	router.Route("/api/v1", func(r chi.Router) {
-		//GET	/api/v1/{videoID:^[a-zA-Z0-9_-]{11}$}?lang=
+
+		//GET	/api/v1/videoID?lang=
 		r.With(middlewares.LogVideoRequest(logger)).
-			Get(fmt.Sprintf("/{%s:%s}", models.VideoIDTag, models.VideoPattern), route.GetVideoTranscription)
+			Get("/videoID", route.GetVideoTranscription)
 
 		r.Route("/auth", func(r chi.Router) {
 
@@ -66,12 +65,11 @@ func Router(logger *zap.Logger, client *http.Client, service *service.Service, r
 			r.Post("/sign-up", route.SignUp)
 
 			//POST /api/v1/auth/login
-			r.With(route.CheckCookie, route.IdentifyUser).
-				Post("/login", route.LogIn)
+			r.Post("/login", route.LogIn)
 		})
 
 		//GET /api/v1/hello-world
-		r.With(route.CheckCookie, route.IdentifyUser).
+		r.With(middlewares.CheckCookie(logger), middlewares.Identify(logger, service.Manager)).
 			Get("/hello-world", route.HelloWorld)
 
 	})

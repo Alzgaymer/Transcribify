@@ -4,20 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
-	"math/rand"
 	"time"
 	"transcribify/internal/models"
 )
 
 const (
-	Token   = 15 * time.Minute
+	Access  = 15 * time.Minute
 	Refresh = 24 * time.Hour
 )
 
 type TokenManager interface {
 	NewJWT(user *models.User, ttl time.Duration) (models.Token, error)
-	Parse(accessToken string) (string, error)
-	NewRefreshToken() (string, error)
+	Parse(accessToken string) (int, error)
 }
 
 type Manager struct {
@@ -31,7 +29,7 @@ func (m *Manager) NewJWT(user *models.User, ttl time.Duration) (models.Token, er
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)
-	claims["sub"] = (*user).ID
+	claims["sub"] = user.ID
 	claims["exp"] = expires.Unix()
 	claims["role"] = user.Role
 
@@ -40,13 +38,22 @@ func (m *Manager) NewJWT(user *models.User, ttl time.Duration) (models.Token, er
 		return models.Token{}, err
 	}
 
-	return models.Token{
+	t := models.Token{
 		T:         signed,
 		ExpiresAt: expires,
-	}, nil
+	}
+
+	switch ttl {
+	case Access:
+		t.Key = "access"
+	case Refresh:
+		t.Key = "refresh"
+	}
+
+	return t, nil
 }
 
-func (m *Manager) Parse(accessToken string) (string, error) {
+func (m *Manager) Parse(accessToken string) (int, error) {
 	token, err := jwt.Parse(accessToken, func(token *jwt.Token) (i interface{}, err error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -55,28 +62,19 @@ func (m *Manager) Parse(accessToken string) (string, error) {
 		return []byte(m.signingKey), nil
 	})
 	if err != nil {
-		return "", err
+		return -1, err
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", fmt.Errorf("error get user claims from token")
+		return -1, fmt.Errorf("error get user claims from token")
 	}
 
-	return claims["sub"].(string), nil
-}
-
-func (m *Manager) NewRefreshToken() (string, error) {
-	b := make([]byte, 32)
-
-	s := rand.NewSource(time.Now().Unix())
-	r := rand.New(s)
-
-	if _, err := r.Read(b); err != nil {
-		return "", err
+	id, ok := claims["sub"].(float64)
+	if !ok {
+		return -1, err
 	}
-
-	return fmt.Sprintf("%x", b), nil
+	return int(id), nil
 }
 
 func NewManager(signingKey string) (*Manager, error) {

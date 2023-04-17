@@ -28,6 +28,28 @@ func formatQuery(q string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }
 
+func (p *YTVideoRepository) GetIDByIDLang(ctx context.Context, request models.VideoRequest) (string, error) {
+	query := "select id::text from video where video_id = $1 and language = $2;"
+	var id string
+
+	if err := p.client.QueryRow(ctx, query, request.VideoID, request.Language).Scan(&id); err != nil {
+		return "", err
+	}
+
+	return id, nil
+}
+
+func (p *YTVideoRepository) PutVideo(ctx context.Context, request models.VideoRequest) (string, error) {
+	query := "select id::text from video where video_id = $1 and language = $2;"
+	var id string
+
+	if err := p.client.QueryRow(ctx, query, request.VideoID, request.Language).Scan(&id); err != nil {
+		return "", err
+	}
+
+	return id, nil
+}
+
 func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, request models.VideoRequest) (int, error) {
 
 	var (
@@ -44,7 +66,7 @@ func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, re
 
 	jsonData, err := json.Marshal(video)
 	if err != nil {
-		return InternalRepositoryError, err
+		return 0, err
 	}
 
 	err = p.client.QueryRow(ctx,
@@ -60,10 +82,10 @@ func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, re
 			pgErr = err.(*pgconn.PgError)
 			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
 
-			return InternalRepositoryError, newErr
+			return 0, newErr
 		}
 
-		return NotFound, err
+		return 0, err
 	}
 
 	return id, nil

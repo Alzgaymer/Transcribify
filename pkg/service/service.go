@@ -22,6 +22,6 @@ func New(repository repository.Repository) *Service {
 
 	return &Service{
 		Manager:       manager,
-		Authorization: auth.NewAuthorizationManager(repository.User),
+		Authorization: auth.NewAuthorizationManager(repository.User, manager),
 	}
 }
