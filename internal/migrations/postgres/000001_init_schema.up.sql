@@ -1,30 +1,32 @@
-CREATE TABLE video (
-        id SERIAL PRIMARY KEY,
-        title TEXT,
-        description TEXT,
-        available_langs TEXT[],
-        length_in_seconds TEXT,
-        thumbnails JSONB,
-        transcription JSONB,
-        video_id CHAR(11) ,
-        language CHAR(2),
-        UNIQUE (video_id)
+create table video (
+        id serial primary key,
+        title text,
+        description text,
+        available_langs text[],
+        length_in_seconds text,
+        thumbnails jsonb,
+        transcription jsonb,
+        video_id char(11) ,
+        language char(2),
+        unique (video_id)
 );
 
-CREATE TABLE users (
-        id SERIAL PRIMARY KEY,
-        email TEXT UNIQUE ,
-        password TEXT NOT NULL,
-        refresh_token TEXT,
-        UNIQUE (id, email)
+create table users (
+        id serial primary key,
+        email text unique ,
+        password text not null,
+        unique (id, email)
 );
 
-CREATE TABLE user_videos (
-        id SERIAL PRIMARY KEY,
-        user_id INT NOT NULL,
-        video_id CHAR(11) NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-        FOREIGN KEY (video_id) REFERENCES video (video_id) ON DELETE CASCADE
+create table user_videos (
+        id serial primary key,
+        user_id int not null,
+        video_id char(11) not null,
+        foreign key (user_id) references users (id) on delete cascade,
+        foreign key (video_id) references video (video_id) on delete cascade
 
 );
+
+
+
 
