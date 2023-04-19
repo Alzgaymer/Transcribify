@@ -6,23 +6,17 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
-	"net/http"
 	"time"
 	"transcribify/internal/config"
 	"transcribify/pkg/logging"
-
-	"transcribify/pkg/finders"
-	"transcribify/pkg/repository"
 )
 
 func NewClient(ctx context.Context) (client *pgx.Conn, err error) {
 	configuration := config.DB()
 	dsn := GetDSN(configuration)
-
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	err = doWithAttempts(ctx, func() error {
-
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
 
 		client, err = pgx.Connect(ctx, dsn)
 		if err != nil {
@@ -63,12 +57,4 @@ func doWithAttempts(ctx context.Context, operation backoff.Operation) error {
 				zap.Duration("Waiting for", duration),
 			)
 		})
-}
-
-// CacheVideoFinders
-func CacheVideoFinders(client *http.Client, repository repository.Video) []finders.Finder {
-	return []finders.Finder{
-		finders.NewDatabaseFinder(repository),
-		finders.NewAPIFinder(client, repository),
-	}
 }

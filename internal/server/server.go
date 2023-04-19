@@ -24,9 +24,10 @@ func Server(ctx context.Context) *http.Server {
 		log.Fatal(err)
 	}
 	repository := Repository(ctx)
+	client := Client()
 	return &http.Server{
 		Addr:    ":" + os.Getenv("APP_PORT"),
-		Handler: Router(Logger(), Client(), service.New(*repository), repository),
+		Handler: Router(Logger(), client, service.New(*repository, client), repository),
 	}
 }
 
@@ -46,15 +47,15 @@ func Router(logger *zap.Logger, client *http.Client, service *service.Service, r
 	router := chi.NewRouter()
 
 	route := routes.NewRoute(
-		logger, client, repository, service, dbclient.CacheVideoFinders(client, repository.Video)...,
+		logger, client, repository, service, service.CacheVideoFinders()...,
 	)
 
-	// Create a route for the GET method that accepts the video ID as a parameter
+	// CreateVideo a route for the GET method that accepts the video ID as a parameter
 	router.Route("/api/v1", func(r chi.Router) {
 
-		//GET	/api/v1/videoID?lang=
-		r.With(middlewares.LogVideoRequest(logger)).
-			Get("/videoID", route.GetVideoTranscription)
+		//GET	/api/v1/video/{id}?lang=
+		r.With(middlewares.LogVideoRequest(logger), middlewares.Identify(logger, service.Manager)).
+			Get("/video/{id}", route.GetVideoTranscription)
 
 		r.Route("/auth", func(r chi.Router) {
 
@@ -68,8 +69,12 @@ func Router(logger *zap.Logger, client *http.Client, service *service.Service, r
 			r.Post("/login", route.LogIn)
 		})
 
-		//GET /api/v1/hello-world
-		r.With(middlewares.CheckCookie(logger), middlewares.Identify(logger, service.Manager)).
+		//GET 	/api/v1/user/{id}
+		r.With(middlewares.Identify(logger, service.Manager)).
+			Get("/user/{id}", route.GetUserVideo)
+
+		//GET 	/api/v1/hello-world
+		r.With(middlewares.Identify(logger, service.Manager)).
 			Get("/hello-world", route.HelloWorld)
 
 	})

@@ -44,26 +44,32 @@ func NewRoute(
 // GetVideoTranscription Handle GET request for video with specified language
 func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request) {
 
-	// Get the language from the query
-
 	var (
-		VideoRequest = models.VideoRequest{
-			VideoID:  chi.URLParam(r, models.VideoIDTag),
+		vr = models.VideoRequest{
+			VideoID:  chi.URLParam(r, "id"),
 			Language: r.URL.Query().Get("lang"),
 		}
-		video *models.YTVideo
+		video = new(models.YTVideo)
 		err   error
 		ctx   = r.Context()
 	)
+	// Get the language from the query
+	uid := GetSubFromCtx(ctx)
+	if uid == -1 {
+		w.WriteHeader(http.StatusUnauthorized)
+		route.logger.Info("Invalid user id", zap.Int("uid", uid))
+
+		return
+	}
 
 	//Validating request
-	if valid, err := middlewares.ValidateVideoRequest(VideoRequest); !valid || err != nil {
+	if valid, err := middlewares.ValidateVideoRequest(vr); !valid || err != nil {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
 
 	for _, finder := range route.finders {
-		video, err = finder.Find(ctx, VideoRequest)
+		video, err = finder.Find(ctx, vr)
 		if err == nil && video != nil {
 			break
 		}
@@ -88,6 +94,14 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	//	return
 	//}
 	//route.logger.Info("OPENAI response", zap.Any("resp", resp))
+	err = route.repository.User.PutUserVideo(ctx, uid, vr.VideoID)
+	if err != nil {
+		route.logger.Info("Failed to put user video", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, video)
 }
@@ -111,12 +125,13 @@ func (route *Route) SignUp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetSubFromCtx(ctx context.Context) string {
+// GetSubFromCtx returns -1 if sub doesn`t provided in context.Context
+func GetSubFromCtx(ctx context.Context) int {
 	switch val := ctx.Value("sub"); val {
 	case nil:
-		return ""
+		return -1
 	default:
-		return val.(string)
+		return int(val.(float64))
 	}
 }
 
@@ -137,6 +152,27 @@ func (route *Route) LogIn(w http.ResponseWriter, r *http.Request) {
 
 func (route *Route) GetToken(w http.ResponseWriter, r *http.Request) {
 
+}
+
+func (route *Route) GetUserVideo(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	uid := GetSubFromCtx(ctx)
+	if uid == -1 {
+		w.WriteHeader(http.StatusUnauthorized)
+		route.logger.Info("Failed to authorize", zap.Int("uid", uid))
+		return
+	}
+
+	videos, err := route.repository.User.GetUserVideos(ctx, uid)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		route.logger.Info("Failed to get user videos", zap.Error(err))
+
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	render.JSON(w, r, videos)
 }
 
 func (route *Route) getSignInData(r *http.Request) *models.User {

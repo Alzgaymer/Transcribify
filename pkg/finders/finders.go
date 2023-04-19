@@ -84,7 +84,7 @@ func (a *APIFinder) Find(ctx context.Context, video models.VideoRequest) (*model
 		return nil, err
 	}
 
-	_, err = a.repo.Create(ctx, data[0], video)
+	_, err = a.repo.CreateVideo(ctx, video, &data[0])
 	if err != nil {
 		return nil, err
 	}
@@ -93,10 +93,10 @@ func (a *APIFinder) Find(ctx context.Context, video models.VideoRequest) (*model
 }
 
 func (d *DatabaseFinder) Find(ctx context.Context, video models.VideoRequest) (*models.YTVideo, error) {
-	read, err := d.repo.Read(ctx, video)
+	read, err := d.repo.GetVideoByIDLang(ctx, video)
 	if err != nil {
 		return nil, err
 	}
 
-	return &read, nil
+	return read, nil
 }

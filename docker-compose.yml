@@ -47,7 +47,7 @@ services:
     networks:
       - new
     volumes:
-      - ./internal/migrations/postgres/:/migrations
+      - ./assets/migrations/postgres/:/migrations
     command: ["-path", "./migrations", "-database", "postgres://${DB_USERNAME}:${DB_PASSWORD}@database:${DB_PORT}/${DB_DATABASE}?sslmode=disable", "up", "2"]
     depends_on:
       db:

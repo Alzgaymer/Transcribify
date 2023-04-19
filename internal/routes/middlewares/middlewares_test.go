@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -32,30 +31,30 @@ func TestLogging(t *testing.T) {
 			Name:         "Using url.Values",
 			ExpectedCode: http.StatusOK,
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				lang := r.URL.Query().Get(models.LanguageTag)
+				lang := r.URL.Query().Get("lang")
 				if lang == "" {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
 				w.WriteHeader(http.StatusOK)
 			}),
-			Endpoint:     "/00000000000",                            //11
-			Query:        fmt.Sprintf("?%s=ua", models.LanguageTag), //?lang=ua
+			Endpoint:     "/00000000000", //11
+			Query:        "?lang=ua",
 			ExpectedLang: "ua",
 		},
 		{
 			Name:         "Using through maps",
 			ExpectedCode: http.StatusOK,
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				lang := r.URL.Query()[models.LanguageTag][0]
+				lang := r.URL.Query()["lang"][0]
 				if lang == "" {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
 				w.WriteHeader(http.StatusOK)
 			}),
-			Endpoint:     "/00000000000",                            //11
-			Query:        fmt.Sprintf("?%s=ua", models.LanguageTag), //?lang=ua
+			Endpoint:     "/00000000000", //11
+			Query:        "?lang=ua",     //?lang=ua
 			ExpectedLang: "ua",
 		},
 	}

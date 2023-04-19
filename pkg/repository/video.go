@@ -3,10 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"strings"
 	"transcribify/internal/models"
 )
@@ -28,70 +25,36 @@ func formatQuery(q string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }
 
-func (p *YTVideoRepository) GetIDByIDLang(ctx context.Context, request models.VideoRequest) (string, error) {
-	query := "select id::text from video where video_id = $1 and language = $2;"
-	var id string
-
-	if err := p.client.QueryRow(ctx, query, request.VideoID, request.Language).Scan(&id); err != nil {
-		return "", err
-	}
-
-	return id, nil
-}
-
-func (p *YTVideoRepository) PutVideo(ctx context.Context, request models.VideoRequest) (string, error) {
-	query := "select id::text from video where video_id = $1 and language = $2;"
-	var id string
-
-	if err := p.client.QueryRow(ctx, query, request.VideoID, request.Language).Scan(&id); err != nil {
-		return "", err
-	}
-
-	return id, nil
-}
-
-func (p *YTVideoRepository) Create(ctx context.Context, video models.YTVideo, request models.VideoRequest) (int, error) {
-
+func (p *YTVideoRepository) CreateVideo(ctx context.Context, request models.VideoRequest, video *models.YTVideo) (int, error) {
 	var (
-		rawQuery = `INSERT INTO video_data(
-	                       video_id,
-	                       language,
-	                       json_data
-	                       )
-					VALUES ($1, $2, $3)
-					returning id`
-		query = formatQuery(rawQuery)
-		id    int
+		id        int
+		sb        = new(strings.Builder)
+		rawThumb  json.RawMessage
+		rawTransc json.RawMessage
 	)
 
-	jsonData, err := json.Marshal(video)
+	err := json.NewEncoder(sb).Encode(rawThumb)
 	if err != nil {
-		return 0, err
+		return -2, err
 	}
 
-	err = p.client.QueryRow(ctx,
-		query,
-		request.VideoID,
-		request.Language,
-		jsonData,
+	sb.Reset()
+	err = json.NewEncoder(sb).Encode(rawThumb)
+	if err != nil {
+		return -2, err
+	}
+
+	err = p.client.QueryRow(ctx, "select id from put_video($1, $2, $3, $4, $5, $6, $7, $8)",
+		video.Title, video.Description, video.AvailableLangs, video.LengthInSeconds,
+		rawThumb, rawTransc, request.VideoID, request.Language,
 	).Scan(&id)
-
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			pgErr = err.(*pgconn.PgError)
-			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
-
-			return 0, newErr
-		}
-
-		return 0, err
+		return -1, err
 	}
-
 	return id, nil
 }
 
-func (p *YTVideoRepository) Read(ctx context.Context, request models.VideoRequest) (models.YTVideo, error) {
+func (p *YTVideoRepository) GetVideoByIDLang(ctx context.Context, request models.VideoRequest) (*models.YTVideo, error) {
 	var (
 		rawQuery = `SELECT json_data 
 					FROM video_data as vd
@@ -106,18 +69,18 @@ func (p *YTVideoRepository) Read(ctx context.Context, request models.VideoReques
 
 	err := row.Scan(&rawVideo)
 	if err != nil {
-		return video, err
+		return nil, err
 	}
 
 	err = json.Unmarshal(rawVideo, &video)
 	if err != nil {
-		return video, err
+		return nil, err
 	}
 
-	return video, nil
+	return &video, nil
 }
 
-func (p *YTVideoRepository) Update(ctx context.Context, req models.VideoRequest, video models.YTVideo) error {
+func (p *YTVideoRepository) Update(ctx context.Context, req models.VideoRequest, video *models.YTVideo) error {
 	// write a query to update the video
 
 	var (
@@ -142,7 +105,7 @@ func (p *YTVideoRepository) Update(ctx context.Context, req models.VideoRequest,
 	return nil
 }
 
-func (p *YTVideoRepository) Delete(ctx context.Context, req models.VideoRequest) error {
+func (p *YTVideoRepository) Remove(ctx context.Context, req models.VideoRequest) error {
 	var (
 		rawQuerry = `	DELETE FROM video_data
 						WHERE video_id = $1 AND language = $2;

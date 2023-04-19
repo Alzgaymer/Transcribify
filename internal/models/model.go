@@ -5,11 +5,6 @@ import (
 	"strconv"
 )
 
-const (
-	VideoIDTag  = "videoID"
-	LanguageTag = "lang"
-)
-
 type YTVideo struct {
 	Title           string          `json:"title"`
 	Description     string          `json:"description"`

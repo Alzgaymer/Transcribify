@@ -13,18 +13,25 @@ type (
 	}
 
 	Video interface {
-		Create(context.Context, models.YTVideo, models.VideoRequest) (int, error)
-		Read(context.Context, models.VideoRequest) (models.YTVideo, error)
-		Update(context.Context, models.VideoRequest, models.YTVideo) error
-		Delete(context.Context, models.VideoRequest) error
+		CreateVideo(context.Context, models.VideoRequest, *models.YTVideo) (int, error)
+
+		GetVideoByIDLang(context.Context, models.VideoRequest) (*models.YTVideo, error)
+
+		Update(context.Context, models.VideoRequest, *models.YTVideo) error
+		Remove(context.Context, models.VideoRequest) error
 	}
 
 	User interface {
-		GetUserByLogin(ctx context.Context, user *models.User) error
 
+		// GetUserByLoginPassword use models.User Email and Password fields to fill model.User struct.
 		GetUserByLoginPassword(ctx context.Context, user *models.User) error
 
+		GetUserVideos(ctx context.Context, uid int) ([]string, error)
+
+		// PutUser store user. If user exist fill models.User ID field.
 		PutUser(ctx context.Context, user *models.User) error
+
+		PutUserVideo(ctx context.Context, uid int, vid string) error
 	}
 )
 
