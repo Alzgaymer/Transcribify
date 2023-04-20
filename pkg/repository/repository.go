@@ -26,7 +26,7 @@ type (
 		// GetUserByLoginPassword use models.User Email and Password fields to fill model.User struct.
 		GetUserByLoginPassword(ctx context.Context, user *models.User) error
 
-		GetUserVideos(ctx context.Context, uid int) ([]string, error)
+		GetUserVideos(ctx context.Context, uid int, vid string) ([]string, error)
 
 		// PutUser store user. If user exist fill models.User ID field.
 		PutUser(ctx context.Context, user *models.User) error

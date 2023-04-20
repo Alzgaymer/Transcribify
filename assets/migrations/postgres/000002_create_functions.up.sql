@@ -79,16 +79,22 @@ $$
     language plpgsql;
 
 create or replace function get_user_videos(
-    p_user_id integer
-    )
+    p_user_id integer,
+    p_last_video_id char(11) default null
+)
     returns setof user_videos as
 $$
 begin
-    return query
-    select * from user_videos
-    where  user_id = p_user_id /*limit 2 offset*/;
-
-
+    if p_last_video_id is null or is_text_empty(p_last_video_id::text) then
+        return query    select * from user_videos
+                        where user_id = p_user_id
+                        limit 5;
+    else
+        return query    select * from user_videos
+                        where video_id > p_last_video_id and user_id = p_user_id
+                        order by video_id
+                        limit 5;
+    end if;
 end;
 $$
     language plpgsql;

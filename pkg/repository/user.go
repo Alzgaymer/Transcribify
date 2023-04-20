@@ -4,10 +4,12 @@ import (
 	"context"
 	"github.com/jackc/pgx/v5"
 	"transcribify/internal/models"
+	"transcribify/pkg/hash"
 )
 
 type UserRepository struct {
 	client *pgx.Conn
+	hash   hash.PasswordHasher
 }
 
 func (u *UserRepository) PutUser(ctx context.Context, user *models.User) error {
@@ -15,10 +17,10 @@ func (u *UserRepository) PutUser(ctx context.Context, user *models.User) error {
 		Scan(&user.ID)
 }
 
-func (u *UserRepository) GetUserVideos(ctx context.Context, uid int) ([]string, error) {
+func (u *UserRepository) GetUserVideos(ctx context.Context, uid int, vid string) ([]string, error) {
 
 	arr := make([]string, 0)
-	rows, err := u.client.Query(ctx, "select video_id from get_user_videos($1)", uid)
+	rows, err := u.client.Query(ctx, "select video_id from get_user_videos($1, $2)", uid, vid)
 	if err != nil {
 		return nil, err
 	}

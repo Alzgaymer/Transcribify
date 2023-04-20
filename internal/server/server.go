@@ -62,9 +62,13 @@ func Router(logger *zap.Logger, client *http.Client, service *service.Services, 
 		r.With(middlewares.LogVideoRequest(logger), middlewares.Identify(logger, service.Manager)).
 			Get("/video/{id}", route.GetVideoTranscription)
 
-		//GET /api/v1/user/{id}
+		//GET /api/v1/user/{id}/{page}
+		//r.With(middlewares.Identify(logger, service.Manager)).
+		//	Get("/user/{id}/{page}", )
+
+		//GET /api/v1/user/{vid}
 		r.With(middlewares.Identify(logger, service.Manager)).
-			Get("/user/{id}", route.GetUserVideo)
+			Get("/user/{vid}", route.GetUserVideo)
 
 		//GET /api/v1/hello-world
 		r.With(middlewares.Identify(logger, service.Manager)).

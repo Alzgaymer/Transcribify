@@ -138,6 +138,8 @@ func (route *Route) GetToken(w http.ResponseWriter, r *http.Request) {
 
 func (route *Route) GetUserVideo(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	// get user id
 	uid := GetSubFromCtx(ctx)
 
 	if uid == -1 {
@@ -146,7 +148,9 @@ func (route *Route) GetUserVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	videos, err := route.repository.User.GetUserVideos(ctx, uid)
+	vid := chi.URLParam(r, "vid")
+
+	videos, err := route.repository.User.GetUserVideos(ctx, uid, vid)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		route.logger.Info("Failed to get user videos", zap.Error(err))

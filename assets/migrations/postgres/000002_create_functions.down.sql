@@ -10,9 +10,12 @@ drop function put_video(
     in p_video_id char(11),
     in p_language char(2)
 );
+
 drop function get_user_videos(
-    p_user_id integer
+    p_user_id integer,
+    p_last_video_id char(11)
 );
+
 drop function put_user_video(
     p_user_id integer,
     p_video_id char(11)
