@@ -70,9 +70,9 @@ begin
     values (
     p_title, p_description, p_available_langs, p_length_in_seconds, p_thumbnails, p_transcription, p_video_id, p_language
     )
-    on conflict (video_id, language) do nothing;
+    on conflict (video_id) do nothing;
 
-    return query select * from video where video_id = p_video_id;
+    return query select * from video where video_id = p_video_id and language = p_language;
 
 end;
 $$

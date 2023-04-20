@@ -7,8 +7,8 @@ create table video (
         thumbnails jsonb,
         transcription jsonb,
         video_id char(11) unique ,
-        language char(2) unique ,
-        unique (video_id, language)
+        language char(2),
+        unique (video_id)
 );
 
 create table users (

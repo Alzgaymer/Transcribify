@@ -63,6 +63,6 @@ func (t *Transcription) UnmarshalJSON(data []byte) error {
 }
 
 type VideoRequest struct {
-	VideoID  string `json:"v" validate:"len=11,alphanum"`
+	VideoID  string `json:"v" validate:"len=11,ascii"`
 	Language string `json:"lang" validate:"bcp47_language_tag"`
 }

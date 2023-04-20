@@ -2,7 +2,6 @@ package service
 
 import (
 	"log"
-	"net/http"
 	"os"
 	"transcribify/pkg/auth"
 	"transcribify/pkg/finders"
@@ -10,32 +9,22 @@ import (
 )
 
 type (
-	Service struct {
+	Services struct {
 		Manager       auth.TokenManager
 		Authorization auth.Authorization
-		client        *http.Client
-		repo          repository.Video
+		Finder        finders.Finder
 	}
 )
 
-func New(repository repository.Repository, client *http.Client) *Service {
+func New(repository repository.Repository, finder finders.Finder) *Services {
 	manager, err := auth.NewManager(os.Getenv("JWT_SALT"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return &Service{
+	return &Services{
 		Manager:       manager,
 		Authorization: auth.NewAuthorizationManager(repository.User, manager),
-		repo:          repository.Video,
-		client:        client,
-	}
-}
-
-// CacheVideoFinders
-func (s *Service) CacheVideoFinders() []finders.Finder {
-	return []finders.Finder{
-		finders.NewDatabaseFinder(s.repo),
-		finders.NewAPIFinder(s.client, s.repo),
+		Finder:        finder,
 	}
 }

@@ -5,10 +5,10 @@ build:
 
 #make run file=
 run:
-	docker compose -f $(file) up -d
+	docker compose -f docker-compose.yml up -d
 
 down:
-	docker compose -f $(file) down
+	docker compose -f docker-compose.yml down
 
 
 lint:

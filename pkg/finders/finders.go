@@ -21,9 +21,6 @@ type (
 		headers http.Header
 		repo    repository.Video
 	}
-	DatabaseFinder struct {
-		repo repository.Video
-	}
 )
 
 func NewAPIFinder(client *http.Client, repository repository.Video) *APIFinder {
@@ -51,12 +48,6 @@ func NewAPIFinderWithHeaders(client *http.Client, headers http.Header, repositor
 	}
 }
 
-func NewDatabaseFinder(repository repository.Video) *DatabaseFinder {
-	return &DatabaseFinder{
-		repo: repository,
-	}
-}
-
 func (a *APIFinder) Find(ctx context.Context, video models.VideoRequest) (*models.YTVideo, error) {
 	var (
 		APIURL = fmt.Sprintf(
@@ -66,6 +57,12 @@ func (a *APIFinder) Find(ctx context.Context, video models.VideoRequest) (*model
 		)
 		data []models.YTVideo
 	)
+
+	// Find in repository
+	read, err := a.repo.GetVideoByIDLang(ctx, video)
+	if err == nil {
+		return read, err
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, APIURL, nil)
 	if err != nil {
@@ -90,13 +87,4 @@ func (a *APIFinder) Find(ctx context.Context, video models.VideoRequest) (*model
 	}
 
 	return &data[0], nil
-}
-
-func (d *DatabaseFinder) Find(ctx context.Context, video models.VideoRequest) (*models.YTVideo, error) {
-	read, err := d.repo.GetVideoByIDLang(ctx, video)
-	if err != nil {
-		return nil, err
-	}
-
-	return read, nil
 }

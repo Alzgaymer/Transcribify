@@ -12,7 +12,6 @@ import (
 	"time"
 	"transcribify/internal/models"
 	"transcribify/internal/routes/middlewares"
-	"transcribify/pkg/finders"
 	"transcribify/pkg/repository"
 	"transcribify/pkg/service"
 )
@@ -21,24 +20,22 @@ type Route struct {
 	logger     *zap.Logger
 	client     *http.Client
 	repository *repository.Repository
-	finders    []finders.Finder
-	service    *service.Service
+	service    *service.Services
 }
 
 func NewRoute(
 	logger *zap.Logger,
 	client *http.Client,
 	repository *repository.Repository,
-	service *service.Service,
-	finders ...finders.Finder,
+	service *service.Services,
 ) *Route {
 	return &Route{
 		logger:     logger,
 		client:     client,
 		repository: repository,
 		service:    service,
-		finders:    finders,
 	}
+
 }
 
 // GetVideoTranscription Handle GET request for video with specified language
@@ -55,6 +52,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	)
 	// Get the language from the query
 	uid := GetSubFromCtx(ctx)
+
 	if uid == -1 {
 		w.WriteHeader(http.StatusUnauthorized)
 		route.logger.Info("Invalid user id", zap.Int("uid", uid))
@@ -65,35 +63,19 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 	//Validating request
 	if valid, err := middlewares.ValidateVideoRequest(vr); !valid || err != nil {
 		w.WriteHeader(http.StatusConflict)
+		route.logger.Info("Invalid video request",
+			zap.Any("video request", vr), zap.Error(err), zap.Bool("valid", valid))
 		return
 	}
 
-	for _, finder := range route.finders {
-		video, err = finder.Find(ctx, vr)
-		if err == nil && video != nil {
-			break
-		}
+	video, err = route.service.Finder.Find(ctx, vr)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		route.logger.Info("Failed to find video", zap.Error(err))
+
+		return
 	}
 
-	//c := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
-	//prompt, err := formatPrompt(video)
-	//if err != nil {
-	//	w.WriteHeader(http.StatusInternalServerError)
-	//	w.Write(nil)
-	//	route.logger.Info("Error while formatting video to OPENAI prompt", zap.Error(err))
-	//	return
-	//}
-	//req := openai.CompletionRequest{
-	//	Model:     openai.GPT3Ada,
-	//	MaxTokens: 2,
-	//	Prompt:    prompt,
-	//}
-	//resp, err := c.CreateCompletion(ctx, req) // HTTP 400 model`s max tokens 2048 in prompt  ~11`000
-	//if err != nil {
-	//	route.logger.Info("Error while sending request to OPENAI", zap.Error(err))
-	//	return
-	//}
-	//route.logger.Info("OPENAI response", zap.Any("resp", resp))
 	err = route.repository.User.PutUserVideo(ctx, uid, vr.VideoID)
 	if err != nil {
 		route.logger.Info("Failed to put user video", zap.Error(err))
@@ -131,7 +113,7 @@ func GetSubFromCtx(ctx context.Context) int {
 	case nil:
 		return -1
 	default:
-		return int(val.(float64))
+		return val.(int)
 	}
 }
 
@@ -157,6 +139,7 @@ func (route *Route) GetToken(w http.ResponseWriter, r *http.Request) {
 func (route *Route) GetUserVideo(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	uid := GetSubFromCtx(ctx)
+
 	if uid == -1 {
 		w.WriteHeader(http.StatusUnauthorized)
 		route.logger.Info("Failed to authorize", zap.Int("uid", uid))
