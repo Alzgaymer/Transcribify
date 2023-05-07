@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/jackc/pgx/v5"
 	"transcribify/internal/models"
+	"transcribify/pkg/hash"
 )
 
 type (
@@ -23,21 +24,21 @@ type (
 
 	User interface {
 
-		// GetUserByLoginPassword use models.User Email and Password fields to fill model.User struct.
-		GetUserByLoginPassword(ctx context.Context, user *models.User) error
+		// GetUserByLogin use models.User Email and Password fields to fill model.User struct.
+		GetUserByLogin(ctx context.Context, user *models.User) error
 
-		GetUserVideos(ctx context.Context, uid int, vid string) ([]string, error)
+		GetUserVideos(ctx context.Context, uid int, limit int, offset int) (map[int]models.YTVideo, error)
 
 		// PutUser store user. If user exist fill models.User ID field.
 		PutUser(ctx context.Context, user *models.User) error
 
-		PutUserVideo(ctx context.Context, uid int, vid string) error
+		PutUserVideo(ctx context.Context, uid int, vidID int) error
 	}
 )
 
-func NewRepositories(client *pgx.Conn) *Repository {
+func NewRepositories(client *pgx.Conn, hasher hash.PasswordHasher) *Repository {
 	return &Repository{
 		Video: NewYTVideoRepository(client),
-		User:  NewUserRepository(client),
+		User:  NewUserRepository(client, hasher),
 	}
 }

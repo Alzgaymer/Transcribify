@@ -31,7 +31,7 @@ func newAPIFinderWithDefaultHeaders(client *http.Client, repository repository.V
 	headers := http.Header{}
 
 	headers.Add("X-RapidAPI-Key", os.Getenv("VIDEO_API_KEY"))
-	headers.Add("X-RapidAPI-Host", os.Getenv("VIDEO_API_URL"))
+	headers.Add("X-RapidAPI-Host", "youtube-transcriptor.p.rapidapi.com")
 
 	return NewAPIFinderWithHeaders(
 		client,

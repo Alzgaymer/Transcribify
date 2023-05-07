@@ -6,6 +6,7 @@ import (
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"transcribify/internal/routes/middlewares"
 	"transcribify/pkg/dbclient"
 	"transcribify/pkg/finders"
+	"transcribify/pkg/hash"
 	"transcribify/pkg/logging"
 	repo "transcribify/pkg/repository"
 	"transcribify/pkg/service"
@@ -31,7 +33,7 @@ func Server(ctx context.Context) *http.Server {
 		Handler: Router(
 			Logger(),
 			client,
-			service.New(*repository, finders.NewAPIFinder(client, repository.Video)),
+			service.New(*repository, finders.NewAPIFinder(client, repository.Video), hash.NewBCHasher(bcrypt.DefaultCost)),
 			repository,
 		),
 	}
@@ -43,7 +45,8 @@ func Repository(ctx context.Context) *repo.Repository {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return repo.NewRepositories(client)
+
+	return repo.NewRepositories(client, hash.NewBCHasher(bcrypt.DefaultCost))
 }
 
 // Router uses for http.Server struct Handler field.
@@ -56,22 +59,20 @@ func Router(logger *zap.Logger, client *http.Client, service *service.Services, 
 		logger, client, repository, service,
 	)
 
+	auth := middlewares.Identify(logger, service.Manager)
+
 	router.Route("/api/v1", func(r chi.Router) {
 
 		//GET /api/v1/video/{id}?lang=
-		r.With(middlewares.LogVideoRequest(logger), middlewares.Identify(logger, service.Manager)).
+		r.With(middlewares.LogVideoRequest(logger), auth).
 			Get("/video/{id}", route.GetVideoTranscription)
 
-		//GET /api/v1/user/{id}/{page}
-		//r.With(middlewares.Identify(logger, service.Manager)).
-		//	Get("/user/{id}/{page}", )
-
-		//GET /api/v1/user/{vid}
-		r.With(middlewares.Identify(logger, service.Manager)).
-			Get("/user/{vid}", route.GetUserVideo)
+		//GET /api/v1/user/history/{page}?limit=
+		r.With(auth).
+			Get("/user/history/{page}", route.GetUserVideo)
 
 		//GET /api/v1/hello-world
-		r.With(middlewares.Identify(logger, service.Manager)).
+		r.With(auth).
 			Get("/hello-world", route.HelloWorld)
 
 		r.Route("/auth", func(r chi.Router) {

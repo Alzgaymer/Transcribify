@@ -8,8 +8,8 @@ import (
 	"github.com/go-chi/render"
 	"go.uber.org/zap"
 	"net/http"
+	"strconv"
 	"strings"
-	"time"
 	"transcribify/internal/models"
 	"transcribify/internal/routes/middlewares"
 	"transcribify/pkg/repository"
@@ -65,6 +65,7 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusConflict)
 		route.logger.Info("Invalid video request",
 			zap.Any("video request", vr), zap.Error(err), zap.Bool("valid", valid))
+
 		return
 	}
 
@@ -76,9 +77,10 @@ func (route *Route) GetVideoTranscription(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = route.repository.User.PutUserVideo(ctx, uid, vr.VideoID)
+	err = route.repository.User.PutUserVideo(ctx, uid, video.Id)
 	if err != nil {
-		route.logger.Info("Failed to put user video", zap.Error(err))
+		route.logger.Info("Failed to put user video",
+			zap.Error(err), zap.Int("uid", uid), zap.Int("video.Id", video.Id))
 		w.WriteHeader(http.StatusInternalServerError)
 
 		return
@@ -95,10 +97,15 @@ func (route *Route) HelloWorld(w http.ResponseWriter, r *http.Request) {
 func (route *Route) SignUp(w http.ResponseWriter, r *http.Request) {
 
 	// Get data from query
-	input := route.getSignInData(r)
+	input, err := route.getSignInData(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+
+		return
+	}
 
 	// Created user
-	err := route.service.Authorization.SignUser(r.Context(), w, input)
+	err = route.service.Authorization.SignUser(r.Context(), w, input)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		route.logger.Info("Failed to create user", zap.Error(err))
@@ -107,7 +114,7 @@ func (route *Route) SignUp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetSubFromCtx returns -1 if sub doesn`t provided in context.Context
+// GetSubFromCtx returns -1 if 'sub' doesn`t provided in context.Context
 func GetSubFromCtx(ctx context.Context) int {
 	switch val := ctx.Value("sub"); val {
 	case nil:
@@ -120,9 +127,14 @@ func GetSubFromCtx(ctx context.Context) int {
 func (route *Route) LogIn(w http.ResponseWriter, r *http.Request) {
 
 	// Get data from query
-	input := route.getSignInData(r)
+	input, err := route.getSignInData(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
 
-	err := route.service.Authorization.LoginUser(r.Context(), w, input)
+		return
+	}
+
+	err = route.service.Authorization.LoginUser(r.Context(), w, input)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 	}
@@ -148,9 +160,22 @@ func (route *Route) GetUserVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vid := chi.URLParam(r, "vid")
+	limit := r.URL.Query().Get("limit")
+	offset := chi.URLParam(r, "page")
 
-	videos, err := route.repository.User.GetUserVideos(ctx, uid, vid)
+	l, err := strconv.Atoi(limit)
+	if err != nil {
+		l = 10
+	}
+	o, err := strconv.Atoi(offset)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		route.logger.Info("Invalid offset", zap.Error(err))
+
+		return
+	}
+
+	videos, err := route.repository.User.GetUserVideos(ctx, uid, l, o)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		route.logger.Info("Failed to get user videos", zap.Error(err))
@@ -162,16 +187,13 @@ func (route *Route) GetUserVideo(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, videos)
 }
 
-func (route *Route) getSignInData(r *http.Request) *models.User {
-	return &models.User{
-		ID:        0,
-		Email:     r.URL.Query().Get("login"),
-		Password:  r.URL.Query().Get("password"),
-		Role:      "",
-		CreatedAt: time.Time{},
-		LastVisit: time.Time{},
+func (route *Route) getSignInData(r *http.Request) (*models.User, error) {
+	user := new(models.User)
+	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+		return nil, err
 	}
 
+	return user, nil
 }
 
 func formatPrompt(video *models.YTVideo) (string, error) {

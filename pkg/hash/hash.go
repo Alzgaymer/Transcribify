@@ -1,27 +1,28 @@
 package hash
 
 import (
-	"crypto/sha1"
-	"fmt"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // PasswordHasher provide password hashing for securely store passwords
 type PasswordHasher interface {
 	Hash(password string) string
+	Compare(password, hashed string) error
 }
 
-// SHA1PSHasher uses SHA1 to hash passwords with provided salt
-type SHA1PSHasher struct {
+type BCHasher struct {
 	salt string
+	cost int
 }
 
-func (s *SHA1PSHasher) Hash(password string) string {
-	hash := sha1.New()
-	hash.Write([]byte(password))
-
-	return fmt.Sprintf("%x", hash.Sum([]byte(s.salt)))
+func NewBCHasher(cost int) *BCHasher {
+	return &BCHasher{cost: cost}
 }
 
-func NewSHA1PSHasher(salt string) *SHA1PSHasher {
-	return &SHA1PSHasher{salt: salt}
+func (b *BCHasher) Hash(password string) string {
+	hash, _ := bcrypt.GenerateFromPassword([]byte(password), b.cost)
+	return string(hash)
+}
+func (b *BCHasher) Compare(password, hashed string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hashed), []byte(password))
 }
