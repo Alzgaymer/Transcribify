@@ -6,6 +6,7 @@ import (
 )
 
 type YTVideo struct {
+	Id              int
 	Title           string          `json:"title"`
 	Description     string          `json:"description"`
 	AvailableLangs  []string        `json:"availableLangs"`  //nolint:tagliatelle

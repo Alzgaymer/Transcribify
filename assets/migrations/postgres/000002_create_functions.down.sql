@@ -1,6 +1,8 @@
-drop function get_user(p_login text, p_password text);
-drop function put_user(p_email text,p_password text);
-drop function put_video(
+drop function get_user(p_login text);
+
+drop procedure put_user(p_email text,p_password text);
+
+drop procedure put_video(
     in p_title text,
     in p_description text,
     in p_available_langs text[],
@@ -11,14 +13,5 @@ drop function put_video(
     in p_language char(2)
 );
 
-drop function get_user_videos(
-    p_user_id integer,
-    p_last_video_id char(11)
-);
 
-drop function put_user_video(
-    p_user_id integer,
-    p_video_id char(11)
-) ;
-
-drop function is_text_empty(str text);
+drop function is_text_empty_or_null(str text);

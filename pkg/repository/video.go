@@ -26,28 +26,21 @@ func formatQuery(q string) string {
 }
 
 func (p *YTVideoRepository) CreateVideo(ctx context.Context, request models.VideoRequest, video *models.YTVideo) (int, error) {
-	var (
-		id        int
-		sb        = new(strings.Builder)
-		rawThumb  json.RawMessage
-		rawTransc json.RawMessage
-	)
+	var id int
 
-	err := json.NewEncoder(sb).Encode(rawThumb)
+	rawThumb, err := json.Marshal(video.Thumbnails)
+	if err != nil {
+		return -2, err
+	}
+	rawTransc, err := json.Marshal(video.Thumbnails)
 	if err != nil {
 		return -2, err
 	}
 
-	sb.Reset()
-	err = json.NewEncoder(sb).Encode(rawThumb)
-	if err != nil {
-		return -2, err
-	}
-
-	err = p.client.QueryRow(ctx, "select id from put_video($1, $2, $3, $4, $5, $6, $7, $8)",
+	_, err = p.client.Exec(ctx, "call put_video($1, $2, $3, $4, $5, $6, $7, $8)",
 		video.Title, video.Description, video.AvailableLangs, video.LengthInSeconds,
 		rawThumb, rawTransc, request.VideoID, request.Language,
-	).Scan(&id)
+	)
 	if err != nil {
 		return -1, err
 	}
@@ -56,23 +49,28 @@ func (p *YTVideoRepository) CreateVideo(ctx context.Context, request models.Vide
 
 func (p *YTVideoRepository) GetVideoByIDLang(ctx context.Context, request models.VideoRequest) (*models.YTVideo, error) {
 	var (
-		rawQuery = `SELECT json_data 
-					FROM video_data as vd
+		rawQuery = `SELECT id, title, description ,available_langs ,length_in_seconds , thumbnails ,transcription 
+					FROM video as vd
 					WHERE vd.video_id = $1 and
 					      vd.language = $2`
 		query    = formatQuery(rawQuery)
-		rawVideo json.RawMessage
+		rawThumb json.RawMessage
+		rawTrans json.RawMessage
 		video    models.YTVideo
 	)
 
-	row := p.client.QueryRow(ctx, query, request.VideoID, request.Language)
-
-	err := row.Scan(&rawVideo)
+	err := p.client.QueryRow(ctx, query, request.VideoID, request.Language).
+		Scan(&video.Id, &video.Title, &video.Description, &video.AvailableLangs, &video.LengthInSeconds, &rawThumb, &rawTrans)
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal(rawVideo, &video)
+	err = json.Unmarshal(rawThumb, &video.Thumbnails)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(rawTrans, &video.Transcription)
 	if err != nil {
 		return nil, err
 	}

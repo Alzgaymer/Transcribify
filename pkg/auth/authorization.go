@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 	"transcribify/internal/models"
+	"transcribify/pkg/hash"
 	"transcribify/pkg/repository"
 )
 
 type Authorization interface {
-	//Authorize(r *http.Request) error
 	SignUser(ctx context.Context, w http.ResponseWriter, user *models.User) error
 	LoginUser(ctx context.Context, w http.ResponseWriter, user *models.User) error
 }
@@ -16,15 +16,12 @@ type Authorization interface {
 type AuthorizationManager struct {
 	repository repository.User
 	tm         TokenManager
+	hasher     hash.PasswordHasher
 }
 
-func NewAuthorizationManager(repository repository.User, tm TokenManager) *AuthorizationManager {
-	return &AuthorizationManager{repository: repository, tm: tm}
+func NewAuthorizationManager(repository repository.User, tm TokenManager, hasher hash.PasswordHasher) *AuthorizationManager {
+	return &AuthorizationManager{repository: repository, tm: tm, hasher: hasher}
 }
-
-//func (a *AuthorizationManager) Authorize(r *http.Request) error {
-//	re
-//}
 
 func (a *AuthorizationManager) SignUser(ctx context.Context, w http.ResponseWriter, user *models.User) error {
 	err := a.repository.PutUser(ctx, user)
@@ -49,7 +46,17 @@ func (a *AuthorizationManager) SignUser(ctx context.Context, w http.ResponseWrit
 }
 
 func (a *AuthorizationManager) LoginUser(ctx context.Context, w http.ResponseWriter, user *models.User) error {
-	err := a.repository.GetUserByLoginPassword(ctx, user)
+	// saves unhashed password
+	pas := user.Password
+
+	// gets from repository password by login
+	err := a.repository.GetUserByLogin(ctx, user)
+	if err != nil {
+		return err
+	}
+
+	// compare unhashed with hashed
+	err = a.hasher.Compare(pas, user.Password)
 	if err != nil {
 		return err
 	}
@@ -68,6 +75,7 @@ func (a *AuthorizationManager) LoginUser(ctx context.Context, w http.ResponseWri
 
 	return nil
 }
+
 func SetJwtToCookie(w http.ResponseWriter, tokens ...models.Token) {
 
 	for _, token := range tokens {
