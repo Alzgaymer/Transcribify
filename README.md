@@ -89,11 +89,3 @@ DB_DATABASE`
 ```http
   GET /api/v1/user/history/{page}?limit=
 ```
-
-
-
-
-## Authors
-
-- [@Alzgaymer](https://www.github.com/Alzgaymer)
-
