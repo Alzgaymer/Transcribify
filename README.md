@@ -24,7 +24,7 @@ Install dependencies
   go mod download
 ```
 
-Start the server. Make sure you add [.env]()
+Start the server. Make sure you add [.env](https://github.com/Alzgaymer/transcribify#environment-variables)
 
 
 ```bash
